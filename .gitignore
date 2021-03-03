@@ -2,3 +2,4 @@ node_modules
 private.json
 .DS_Store
 commands/.DS_Store
+data/.DS_Store

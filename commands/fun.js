@@ -1,26 +1,76 @@
-const Tools = require('../tools');
+const Tools = require('../tools')
 const Data = require('../bot')
 
 module.exports = {
-	name: 'Text',
-	description: 'Configure bot reactions',
-	detail: `Sometimes I will react to messages you send! You can use this command to enable or disable that!`,
-	alias: ['text', 'reaction', 'reactions'],
-	usage: [
-		['text (show)', 'I\'ll tell you if I react to your messages!'],
-		['text enable|disable', 'I\'ll start or stop reacting to your messages!']
-	],
-	public: true,
-	developer: false,
-	guildOnly: false,
-	execute(message, args) {
-		if(args.length < 1 || ['show', 'display'].includes(args[0])) {
-			sendStatus(message.channel, '', message.member);
-		} else if(['enable', 'on', 'true', 'yes'].includes(args[0])) {
-			setText(message.channel, message.member, true);
-		} else if(['disable', 'off', 'false', 'no'].includes(args[0])) {
-			setText(message.channel, message.member, false);
+	name: 'Fun',
+	description: 'Play with some of my fun little features :)',
+	commands: [
+		{
+			name: 'Counting',
+			alias: ['counting', 'count', 'cnt', 'c'],
+			description: `Play the counting game in {counting}!`,
+			usage: [
+				['counting <#channel>', 'Set the channel to play the counting minigame!']
+			],
+			public: false,
+			developer: false,
+			guildOnly: true,
+			execute(message, args) {
+
+				if(message.mentions.channels.size < 1) {
+					message.channel.send({embed: Data.replace({ 
+						description: 'Current counting channel: {counting}'
+					})})
+				} else {
+					Data.setData('counting', message.mentions.channels.first().id)
+					message.channel.send({embed: Data.replace({ 
+						description: 'Changed the counting channel to {counting}'
+					})})
+				}
+			}
+		}, {
+			name: 'Reaction',
+			alias: ['reaction', 'react', 'reactions', 'text', 'txt'],
+			description: 'Sometimes I will react to messages you send! You can use this command to enable or disable that!',
+			usage: [
+				['reaction', `I'll tell you if I am reacting to your messages!`],
+				['text enable|disable', `I\'ll start or stop reacting to your messages!`]
+			],
+			public: true,
+			developer: false,
+			guildOnly: false,
+			execute(message, args) {
+				if(args.length < 1 || ['show', 'display'].includes(args[0])) {
+					sendStatus(message.channel, '', message.member);
+				} else if(['enable', 'on', 'true', 'yes'].includes(args[0])) {
+					Data.setData(`text.enable`, message.member.id)
+					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${member.id}>`, member);
+				} else if(['disable', 'off', 'false', 'no'].includes(args[0])) {
+					Data.setData(`text.disable`, message.member.id)
+					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${member.id}>`, member);
+				}
+			}
 		}
+	],
+	async count(message) {
+
+		messages = await message.channel.messages.fetch({limit: 2})
+		lastMessage = messages.last()
+
+		// Return if last count was edited
+		if(lastMessage.editedTimestamp > 0) {
+			lastMessage.delete()
+			return message.delete()
+		} // Return if last count was made by same author
+		if(message.createdTimestamp - lastMessage.createdTimestamp < 600000 &&
+			message.author.id === lastMessage.author.id) return message.delete()
+		
+		number = message.content.split(/\s+/)[0]
+		lastNumber = lastMessage.content.split(/\s+/)[0]
+		if(!lastNumber.match(/^[0-9]+$/)) lastNumber = "0"
+		if(!number.match(/^[0-9]+$/) || number - 1 != lastNumber) message.delete()
+
+        return true;
 	},
 	react(message) {
 
@@ -52,11 +102,6 @@ module.exports = {
 	}
 };
 
-function setText(channel, member, enabled) {
-	Data.setData(`text.${enabled ? 'enable' : 'disable'}`, member.id)
-	sendStatus(channel, `⬇️ I just updated your preferences!, <@${member.id}>`, member);
-}
-
 function sendStatus(channel, message, member) {
 	channel.send(message, { embed: Data.replace({
 		title: `Reaction/Text Preference of ${member.displayName}`,
@@ -66,13 +111,13 @@ function sendStatus(channel, message, member) {
 
 
 
+
 function isOwO(str) {
 	if(str.length != 3) return false;
 	if(!/^[ou]/.test(str) || !/[ou]$/.test(str)) return false;
 	if(['w', 'v', '-', '_', '^', '=', 'n'].includes(str.slice(1, -1))) return true;
 	return false;
 }
-
 function trimPunc(str) {
 	si = 0; ei = 0;
 	for(i = 0; i < str.length; i++) {
@@ -87,11 +132,6 @@ function trimPunc(str) {
 	}
 	return str.slice(si, ei);
 }
-
-function isOnly(str, char) {
-	return new RegExp("^[\s" + char + "]+$").test(str)
-}
-
 function rep(str, rp) {
 	return str === rp.charAt(0) ? rp.charAt(1) : rp.charAt(0)
 }

@@ -12,6 +12,8 @@ module.exports = {
 
 		if(str === undefined) return;
 
+		str = str.replace(/\t/gi, '')
+
 		// Configuration (prefix)
 		const c = data['Configuration'].prefix.substr(-1)
 		if((c>='a'&&c<='z') || (c>='A'&&c<='Z')) {
@@ -21,10 +23,8 @@ module.exports = {
 		}
 		str = str.replace(/{perm.(.*?)}/gi, (x) => data['Configuration'].disabled.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
 
-		// Minigames
-		str = str.replace(/{minigames.counting}/gi, `<#${data['Minigames'].counting.channel}>`)
-
-		// Text
+		// Fun
+		str = str.replace(/{counting}/gi, `<#${data['Counting'].channel}>`)
 		str = str.replace(/{text.(.*?)}/gi, (x) => data['Text'].users.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
 		
 		return str
@@ -61,7 +61,7 @@ module.exports = {
 		switch(name) {
 			case 'prefix': return data['Configuration'].prefix
 			case 'disabled': return data['Configuration'].disabled
-			case 'minigames.counting': return data['Minigames'].counting.channel
+			case 'counting': return data['Counting'].channel
 			case 'text': return data['Text'].users
 		}
 		if(name.startsWith('disabled.')) return data['Configuration'].disabled.includes(name.slice(9))
@@ -83,12 +83,12 @@ module.exports = {
 			default: didUpdate = false
 		} if(didUpdate) return module.exports.saveData('Configuration')
 
-		// Minigames
+		// Counting
 		didUpdate = true;
 		switch(name) {
-			case 'minigames.counting': data['Minigames'].counting.channel = value; break
+			case 'counting': data['Counting'].channel = value; break
 			default: didUpdate = false
-		} if(didUpdate) return module.exports.saveData('Minigames')
+		} if(didUpdate) return module.exports.saveData('Counting')
 
 		// Text
 		didUpdate = true;
@@ -117,6 +117,17 @@ module.exports = {
 		})
 	},
 
+	/**
+	 * Check if a member has admin privelages or not
+	 * @param {Discord.GuildMember} member The member to check
+	 * @returns True if member is admin
+	 */
+	isAdmin(member) {
+		if(member.hasPermission('ADMINISTRATOR')) return true
+		if(member.id === private.developer) return true
+		return false
+	}
+
 };
 
 /*
@@ -140,8 +151,7 @@ client.login(private.token)
 
 // Load commands
 const commands = {}
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'))
-for (const file of commandFiles) {
+for (const file of ['utility', 'fun']) {
 	const command = require(`./commands/${file}`)
 	commands[command.name] = command
 }
@@ -175,24 +185,25 @@ client.on('message', message => {
 	} else if(message.content.startsWith('<@!'+client.user.id+'>')) {
 		args = message.content.slice(client.user.id.length+4).trim().split(/\s+/)
 	} else {
-		//console.log(commands['Minigames'].count(message))
-		if(data['Minigames'].counting.channel === message.channel.id) return commands['Minigames'].count(message)
+		//console.log(commands['Counting'].count(message))
+		if(data['Counting'].channel === message.channel.id) return commands['Counting'].count(message)
 		return commands['Text'].react(message)
 	}
 
 	if(message.author.bot) return
 	// Process command
-	for(const name in commands) {
-		const command = commands[name]
-		if (!command.alias.includes(args[0].toLowerCase())) {
-		} else if(command.guildOnly && message.channel.type === 'dm') {
-			Tools.fault(message.channel, 'It seems like that command can\'t be used in DMs!');
-		} else if(command.developer && message.member.id !== 'MY_USER_ID') {
-		} else if(!command.public && !message.member.hasPermission('ADMINISTRATOR') && message.member.id !== 'MY_USER_ID') {
-		} else {
-			try { command.execute(message, args.slice(1)); }
-			catch (err) { Tools.error(message.channel, err); return; }
-			break;
+	for(const category in commands) {
+		for(const command of commands[category].commands) {
+			if (!command.alias.includes(args[0].toLowerCase())) {
+			} else if(command.guildOnly && message.channel.type === 'dm') {
+				Tools.fault(message.channel, 'It seems like that command can\'t be used in DMs!');
+			} else if(command.developer && message.member.id !== 'MY_USER_ID') {
+			} else if(!command.public && !message.member.hasPermission('ADMINISTRATOR') && message.member.id !== 'MY_USER_ID') {
+			} else {
+				try { command.execute(message, args.slice(1)); }
+				catch (err) { Tools.error(message.channel, err); return; }
+				break;
+			}
 		}
 	}
 });
