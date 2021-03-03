@@ -8,7 +8,7 @@ module.exports = {
 	alias: ['config', 'configurate', 'botConfig', 'configBot'],
 	usage: [
 		['config prefix [new prefix]', 'Change my prefix, or just show the current prefix by leaving the command blank!'],
-		['config perm (disable|enable) [#channel]', '🥺 You can change which channels I have access to... leave out `disable`/`enable` to show the perms of a channel, or just use `perm` to list all channels.'],
+		['config perm (disable|enable) [#channel]|all', '🥺 You can change which channels I have access to... leave out `disable`/`enable` to show the perms of a channel, or just use `perm` to list all channels.'],
 	],
 	public: false,
 	developer: false,
@@ -46,6 +46,19 @@ function perm(message, args) {
 
 	if(args[0] === 'disable') {		// Disable a channel
 
+		if(args[1] === 'all') {
+			for(let [channelID, channel] of message.channel.guild.channels.cache) {
+				if(channel.type !== 'text') continue;
+				if(channelID === message.channel.id) continue;
+				if(Data.getData(`disabled.${channel.id}`)) continue;
+				Data.setData('disabled', channelID)
+			}
+			return message.channel.send({ embed: Data.replace({
+				title: `🔴 All channels except #${message.channel.name} now disabled!`,
+				description: `You can use \`{prefix}config perm\` to list the channels.`
+			})});
+		}
+
 		channel = message.mentions.channels.first();
 		if(channel === undefined) return Tools.fault(message.channel, `I can't find that channel!`)
 		if(Data.getData(`disabled.${channel.id}`)) return Tools.fault(message.channel, `That channel is already disabled!`)
@@ -57,6 +70,18 @@ function perm(message, args) {
 		})});
 
 	} else if(args[0] === 'enable') {	// Enable a channel
+
+		if(args[1] === 'all') {
+			for(let [channelID, channel] of message.channel.guild.channels.cache) {
+				if(channel.type !== 'text') continue;
+				if(!Data.getData(`disabled.${channel.id}`)) continue;
+				Data.setData('enabled', channelID)
+			}
+			return message.channel.send({ embed: Data.replace({
+				title: `🟢 All channels now enabled!`,
+				description: `You can use \`{prefix}config perm\` to list the channels.`
+			})});
+		}
 
 		channel = message.mentions.channels.first();
 		if(channel === undefined) return Tools.fault(message.channel, 'I can\'t see that channel!')
