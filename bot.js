@@ -185,11 +185,14 @@ client.on('message', message => {
 	} else if(message.content.startsWith('<@!'+client.user.id+'>')) {
 		args = message.content.slice(client.user.id.length+4).trim().split(/\s+/)
 	} else {
-		if(data['Counting'].channel === message.channel.id) return commands['Fun'].count(message)
-		return commands['Fun'].react(message)
+		if(message.channel.type === 'text') {
+			if(data['Counting'].channel === message.channel.id) return commands['Fun'].count(message)
+			commands['Fun'].react(message)
+		} return
 	}
 
 	if(message.author.bot) return
+	if(message.author.id === private.developer && devCommands(message, args)) return
 	// Process command
 	for(const category in commands) {
 		for(const command of commands[category].commands) {
@@ -206,3 +209,12 @@ client.on('message', message => {
 		}
 	}
 });
+
+function devCommands(message, args) {
+	if(args[0] === 'setActivity') {
+		private.status.mode = args[1]
+		private.status.message = args[2]
+		module.exports.saveJSON(private, './private.json')
+		client.user.setActivity(private.status.message, {type: private.status.mode})
+	}
+}
