@@ -93,14 +93,14 @@ module.exports = {
 				if(args[0] === 'disable') {		// Disable a channel
 					if(args[1] === 'all') {
 						for(let [channel, foo] of message.channel.guild.channels.cache) {
-							if(channelID !== message.channel.id) setPerm(channel, false)
+							if(channel !== message.channel.id) setPerm(channel, false)
 						}
 						message.channel.send({ embed: Data.replace({
 							title: `🔴 All channels except #${message.channel.name} now disabled!`,
-							description: `You can use \`{prefix}config perm\` to list the channels.`
+							description: `You can use \`{prefix}perm\` to list the channels.`
 						})})
 					} else {
-						setPerm(message.mentions.channels.first(), false, message.channel)
+						setPerm(message.mentions.channels.first().id, false, message.channel)
 					}
 				} else if(args[0] === 'enable') {	// Enable a channel
 					if(args[1] === 'all') {
@@ -109,27 +109,14 @@ module.exports = {
 						}
 						message.channel.send({ embed: Data.replace({
 							title: `🟢 All channels now enabled!`,
-							description: `You can use \`{prefix}config perm\` to list the channels.`
+							description: `You can use \`{prefix}perm\` to list the channels.`
 						})})
 					} else {
-						setPerm(message.mentions.channels.first(), true, message.channel)
+						setPerm(message.mentions.channels.first().id, true, message.channel)
 					}
 				} else {	// List the permissions of all channels
 			
-					embed = {
-						title: 'Channel Permissions',
-						description: ''
-					}
-					for(let [channelID, channel] of message.channel.guild.channels.cache) {
-						if(channel.type !== 'text') continue;
-						if(!message.member.permissionsIn(channel).has('VIEW_CHANNEL')) continue;
-						if(Data.getData(`disabled.${channelID}`)) {
-							embed.description += `🔴 <#${channelID}>\n`;
-						} else {
-							embed.description += `🟢 <#${channelID}>\n`;
-						}
-					}
-					message.channel.send({ embed: Data.replace(embed) })
+					showPerm(message)
 			
 				}
 			},
@@ -165,12 +152,47 @@ function getCommand(alias) {
 function setPerm(channel, enabled, msgChannel) {
 	
 	if(channel === undefined) return Tools.fault(msgChannel, `I can't find that channel!`)
-	if(disabled && Data.getData(`disabled.${channel}`)) return Tools.fault(msgChannel, `That channel is already disabled!`)
+	if(!enabled && Data.getData(`disabled.${channel}`)) return Tools.fault(msgChannel, `That channel is already disabled!`)
 	if(enabled && !Data.getData(`disabled.${channel}`)) return Tools.fault(msgChannel, 'That channel is already enabled!')
 
 	Data.setData(enabled ? 'enabled' : 'disabled', channel)
 	if(msgChannel !== undefined) msgChannel.send({ embed: Data.replace({
 		title: enabled ? '🟢 I\'ve enabled that channel!' : `🔴 I've disabled that channel!`,
-		description: `Now I won't be able to use <#${channel}> ;-; \nYou can use \`{prefix}config perm\` to list the channels.`
+		description: `Now I won't be able to use <#${channel}> ;-; \nYou can use \`{prefix}perm\` to list the channels.`
 	})});
+}
+
+function showPerm(message) {
+
+
+	// Filter only category and text channels
+	let categories = []
+	let soloChannels = []
+	for(const [_, category] of message.channel.guild.channels.cache) {
+		if(category.type === 'text' && category.parent === null) soloChannels.push(category)
+		if(category.type !== 'category') continue;
+		channels = { category: category, channels: [] }
+		for(const [_, channel] of category.children) {
+			if(!message.member.permissionsIn(channel).has('VIEW_CHANNEL')) continue;
+			if(channel.type === 'text') channels.channels.push(channel)
+		}
+		if(channels.channels.length > 0) categories.push(channels)
+	}
+
+	// Sort channels
+	soloChannels.sort((a, b) => a.position - b.position)
+	categories.sort((a, b) => a.category.position - b.category.position)
+	for(const category in categories) {
+		categories[category].channels.sort((a, b) => a.position - b.position)
+	}
+
+	message.channel.send({embed: Data.replace({
+		title: 'Channel Permissions',
+		description: soloChannels.map((channel) => `${Data.getData(`disabled.${channel.id}`) ? '🔴' : '🟢'} <#${channel.id}>`).join('\n'),
+		fields: categories.map((category) => { return {
+			name: category.category.name,
+			value: category.channels.map((channel) => `${Data.getData(`disabled.${channel.id}`) ? '🔴' : '🟢'} <#${channel.id}>`).join('\n'),
+			inline: true
+		}})
+	})})
 }
