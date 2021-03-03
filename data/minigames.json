@@ -1,0 +1,10 @@
+{
+  "name": "Minigames",
+  "description": "Data for the minigames",
+  "file": "minigames.json",
+  "counting": {
+    "name": "Counting",
+    "description": "Help increase the server count by adding 1 in the counting channel!",
+    "channel": "816513912836849704"
+  }
+}

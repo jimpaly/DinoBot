@@ -1,8 +1,6 @@
-//jshint esversion: 8
-
 const Tools = require('../tools.js');
-const counting = require('./counting.json');
-const mathjs = require('mathjs');
+const counting = require('../data/counting.json');
+//const mathjs = require('mathjs');
 
 module.exports = {
 	name: 'Counting',

@@ -1,0 +1,10 @@
+{
+  "name": "Music",
+  "description": "Data for the music commands",
+  "file": "music.json",
+  "channel": "",
+  "loop": true,
+  "volume": 10,
+  "dj": [],
+  "playlists": {}
+}

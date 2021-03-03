@@ -1,7 +1,5 @@
-//jshint esversion: 8
-
-const musicData = require('./music.json');
-const Tools = require('../tools.js');
+const Tools = require('../tools');
+const Data = require('../bot')
 const ytdl = require('ytdl-core');
 
 songQueue = [];

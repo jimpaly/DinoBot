@@ -1,15 +1,23 @@
 {
-    "name": "DinoBot",
-    "version": "1.0.0",
-    "description": "Mysterious bot... Oooooo~",
-    "main": "bot.js",
-    "author": "Jimps",
-    "dependencies": {
-        "@discordjs/opus": "^0.3.2",
-        "discord.js": "^12.3.1",
-        "ffmpeg": "0.0.4",
-        "fluent-ffmpeg": "^2.1.2",
-        "mathjs": "^7.0.1",
-        "ytdl-core": "^3.3.0"
-    }
+  "name": "dinobot",
+  "version": "1.0.0",
+  "description": "Bot for a Discord server I'm in",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jimpaly/DinoBot.git"
+  },
+  "author": "Jimpaly",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jimpaly/DinoBot/issues"
+  },
+  "homepage": "https://github.com/jimpaly/DinoBot#readme",
+  "dependencies": {
+    "discord.js": "^12.5.1",
+    "ytdl-core": "^4.5.0"
+  }
 }

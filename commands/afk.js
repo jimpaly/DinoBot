@@ -1,7 +1,5 @@
-// jshint esversion: 8
-
 const Tools = require('../tools.js');
-afk = require('./afk.json');
+afk = require('../data/afk.json');
 
 module.exports = {
   name: 'AFK',

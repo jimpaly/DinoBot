@@ -1,50 +1,189 @@
-//jshint esversion: 8
+//Data Manager
+module.exports = {
 
-const Discord = require('discord.js');
-const fs = require('fs');
-const config = require('./config.json');
-const Tools = require('./tools.js');
+	getAllData() { return data },
+	getAllCommands() { return commands },
 
-const client = new Discord.Client({ partials: ['MESSAGE', 'REACTION'] });
-client.login(config.token);
+	/**
+	 * Replaces keys in a string with data from the client
+	 * @param {string} str The string to replace
+	 */
+	replaceStr(str) {
 
-client.commands = new Discord.Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+		if(str === undefined) return;
+
+		// Configuration (prefix)
+		const c = data['Configuration'].prefix.substr(-1)
+		if((c>='a'&&c<='z') || (c>='A'&&c<='Z')) {
+			str = str.replace(/{prefix}/gi, `${data['Configuration'].prefix} `)
+		} else {
+			str = str.replace(/{prefix}/gi, data['Configuration'].prefix)
+		}
+		str = str.replace(/{perm.(.*?)}/gi, (x) => data['Configuration'].disabled.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
+
+		// Minigames
+		str = str.replace(/{minigames.counting}/gi, `<#${data['Minigames'].counting.channel}>`)
+
+		// Text
+		str = str.replace(/{text.(.*?)}/gi, (x) => data['Text'].users.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
+		
+		return str
+	},
+	/**
+	 * Replaces keys in all properties of an object with data from the client
+	 * @param object The object to replace
+	 */
+	replace(object) {
+		if(typeof object === 'string') {
+			return module.exports.replaceStr(object)
+		} else if(typeof object !== 'object') {
+			return object
+		} else if(Array.isArray(object)) {
+			let newObject = []
+			for(const element of object) {
+				newObject.push(module.exports.replace(element))
+			}
+			return newObject
+		} else {
+			let newObject = {}
+			for(const property in object) {
+				newObject[property] = module.exports.replace(object[property])
+			}
+			return newObject
+		}
+	}, 
+
+	/**
+	 * Get data stored in the client
+	 * @param {string} name The name of the data
+	 */
+	getData(name) {
+		switch(name) {
+			case 'prefix': return data['Configuration'].prefix
+			case 'disabled': return data['Configuration'].disabled
+			case 'minigames.counting': return data['Minigames'].counting.channel
+			case 'text': return data['Text'].users
+		}
+		if(name.startsWith('disabled.')) return data['Configuration'].disabled.includes(name.slice(9))
+		if(name.startsWith('text.')) return data['Text'].users.includes(name.slice(5))
+	},
+	/**
+	 * Update data in the client and save it to its file
+	 * @param {string} name The name of the data
+	 * @param value The new value to set the data to 
+	 */
+	setData(name, value) {
+
+		// Configuration
+		didUpdate = true;
+		switch(name) {
+			case 'prefix': data['Configuration'].prefix = value; break
+			case 'disabled': data['Configuration'].disabled.push(value); break
+			case 'enabled': data['Configuration'].disabled.splice(data['Configuration'].disabled.indexOf(value), 1); break
+			default: didUpdate = false
+		} if(didUpdate) return module.exports.saveData('Configuration')
+
+		// Minigames
+		didUpdate = true;
+		switch(name) {
+			case 'minigames.counting': data['Minigames'].counting.channel = value; break
+			default: didUpdate = false
+		} if(didUpdate) return module.exports.saveData('Minigames')
+
+		// Text
+		didUpdate = true;
+		switch(name) {
+			case 'text.disable': data['Text'].users.push(value); break
+			case 'text.enable': data['Text'].users.splice(data['Text'].users.indexOf(value), 1); break
+			default: didUpdate = false
+		} if(didUpdate) return module.exports.saveData('Text')
+	},
+
+	/**
+	 * Save data to its file
+	 * @param {string} name The name of the data to be saved
+	 */
+	saveData(name) {
+		module.exports.saveJSON(data[name], `./data/${data[name].file}`)
+	},
+	/**
+	 * Save an object to a specified file
+	 * @param object The object to be saved
+	 * @param {string} file The file name to save to
+	 */
+	saveJSON(object, file) {
+		fs.writeFile(file, JSON.stringify(object, null, 2), (err) => {
+			if (err) console.log(`fault writing file ${file}:`, err)
+		})
+	},
+
+};
+
+/*
+		  ██████  ██ ███    ██  ██████  ██████   ██████  ████████ 
+		  ██   ██ ██ ████   ██ ██    ██ ██   ██ ██    ██    ██    
+		  ██   ██ ██ ██ ██  ██ ██    ██ ██████  ██    ██    ██    
+		  ██   ██ ██ ██  ██ ██ ██    ██ ██   ██ ██    ██    ██    
+		  ██████  ██ ██   ████  ██████  ██████   ██████     ██    
+*/
+
+
+
+const Discord = require('discord.js')
+const fs = require('fs')
+const Tools = require('./tools.js')
+const private = require('./private.json')
+
+// Start Discord client
+const client = new Discord.Client({ partials: ['MESSAGE', 'REACTION'] })
+client.login(private.token)
+
+// Load commands
+const commands = {}
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'))
 for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
-	client.commands.set(command.name, command);
+	const command = require(`./commands/${file}`)
+	commands[command.name] = command
 }
 
+// Load data
+const data = {}
+const dataFiles = fs.readdirSync('./data').filter(file => file.endsWith('.json'))
+for (const file of dataFiles) {
+	const data1 = require(`./data/${file}`)
+	data[data1.name] = data1
+}
+
+// When the bot starts...
 client.once('ready', () => {
-	console.log('Ready');
+	client.user.setActivity(private.status.message, {type: private.status.mode})
+	console.log(`DinoBot logged in as @${client.user.tag}`)
 });
 
+
+// When a message is sent...
 client.on('message', message => {
-	//if(message.author.bot) return;
-	if(message.author.id === client.user.id) return;
-	if(config.disabled.includes(message.channel.id)) return;
 
-	message.content = message.content.trim();
+	// Initial checks
+	if(message.author.id === client.user.id) return
+	if(data['Configuration'].disabled.includes(message.channel.id)) return
+	message.content = message.content.trim()
 
-
-	if(message.channel.id === config.counting) {
-		client.commands.get('Configuration').count(message)
-		return
+	// Check if it's a command or not
+	if(message.content.startsWith(data['Configuration'].prefix)) {
+		args = message.content.slice(data['Configuration'].prefix.length).trim().split(/\s+/)
+	} else if(message.content.startsWith('<@!'+client.user.id+'>')) {
+		args = message.content.slice(client.user.id.length+4).trim().split(/\s+/)
+	} else {
+		//console.log(commands['Minigames'].count(message))
+		if(data['Minigames'].counting.channel === message.channel.id) return commands['Minigames'].count(message)
+		return commands['Text'].react(message)
 	}
 
-	if(message.channel.type === 'text') {
-		client.commands.get('Counting').count(message);
-
-		client.commands.get('AFK').remove(message.channel, message.author);
-	}
-
-	if(message.content.startsWith(config.prefix)) {
-		args = message.content.slice(config.prefix.length).trim().split(/\s+/);
-	} else if(message.content.startsWith('<@!'+config.id+'>')) {
-		args = message.content.slice(config.id.length+4).trim().split(/\s+/);
-	} else return client.commands.get('Text').react(message);
-
-	for(const [name, command] of client.commands) {
+	if(message.author.bot) return
+	// Process command
+	for(const name in commands) {
+		const command = commands[name]
 		if (!command.alias.includes(args[0].toLowerCase())) {
 		} else if(command.guildOnly && message.channel.type === 'dm') {
 			Tools.fault(message.channel, 'It seems like that command can\'t be used in DMs!');
@@ -56,14 +195,4 @@ client.on('message', message => {
 			break;
 		}
 	}
-});
-
-client.on('messageReactionAdd', async (reaction, user) => {
-	if(user.bot) return;
-	if(config.disabled.includes(reaction.message.channel.id)) return;
-	if(reaction.message.channel.type === 'text') client.commands.get('AFK').remove(reaction.message.channel, user);
-});
-client.on('messageReactionRemove', async (reaction, user) => {
-	if(config.disabled.includes(reaction.message.channel.id)) return;
-	if(user.bot) return;
 });
