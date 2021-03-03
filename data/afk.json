@@ -1,6 +1,0 @@
-{
-    "name": "AFK",
-    "description": "list of people who are AFK (with the AFK command)",
-    "file": "afk.json",
-    "users": {}
-}
