@@ -213,8 +213,9 @@ client.on('message', message => {
 function devCommands(message, args) {
 	if(args[0] === 'setActivity') {
 		private.status.mode = args[1]
-		private.status.message = args[2]
+		private.status.message = args.slice(2).join(' ')
 		module.exports.saveJSON(private, './private.json')
 		client.user.setActivity(private.status.message, {type: private.status.mode})
+		return true;
 	}
 }
