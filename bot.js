@@ -185,9 +185,8 @@ client.on('message', message => {
 	} else if(message.content.startsWith('<@!'+client.user.id+'>')) {
 		args = message.content.slice(client.user.id.length+4).trim().split(/\s+/)
 	} else {
-		//console.log(commands['Counting'].count(message))
-		if(data['Counting'].channel === message.channel.id) return commands['Counting'].count(message)
-		return commands['Text'].react(message)
+		if(data['Counting'].channel === message.channel.id) return commands['Fun'].count(message)
+		return commands['Fun'].react(message)
 	}
 
 	if(message.author.bot) return
