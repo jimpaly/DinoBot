@@ -22,6 +22,7 @@ module.exports = {
 			str = str.replace(/{prefix}/gi, data['Configuration'].prefix)
 		}
 		str = str.replace(/{perm.(.*?)}/gi, (x) => data['Configuration'].disabled.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
+		str = str.replace(/{color}/gi, data['Configuration'].color)
 
 		// Fun
 		str = str.replace(/{counting}/gi, `<#${data['Counting'].channel}>`)
@@ -51,7 +52,16 @@ module.exports = {
 			}
 			return newObject
 		}
-	}, 
+	},
+	/**
+	 * Replaces elements of a Discord embed	
+	 * @param embed The embed to replace
+	 */ 
+	replaceEmbed(embed) {
+		if(embed.color === undefined) embed.color = '{color}'
+		embed = this.replace(embed)
+		return embed
+	},
 
 	/**
 	 * Get data stored in the client
@@ -61,6 +71,7 @@ module.exports = {
 		switch(name) {
 			case 'prefix': return data['Configuration'].prefix
 			case 'disabled': return data['Configuration'].disabled
+			case 'color': return data['Configuration'].color
 			case 'counting': return data['Counting'].channel
 			case 'text': return data['Text'].users
 		}
@@ -80,6 +91,7 @@ module.exports = {
 			case 'prefix': data['Configuration'].prefix = value; break
 			case 'disabled': data['Configuration'].disabled.push(value); break
 			case 'enabled': data['Configuration'].disabled.splice(data['Configuration'].disabled.indexOf(value), 1); break
+			case 'color': data['Configuration'].color = value; break
 			default: didUpdate = false
 		} if(didUpdate) return module.exports.saveData('Configuration')
 

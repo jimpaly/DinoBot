@@ -26,7 +26,7 @@ module.exports = {
 				const command = getCommand(args[0])
 
 				if(command !== undefined) {	// If command exists, show information
-					message.channel.send({embed: Data.replace({
+					message.channel.send({embed: Data.replaceEmbed({
 						title: command.name,
 						description: command.description,
 						fields: [
@@ -45,7 +45,7 @@ module.exports = {
 						]
 					})})
 				} else {	// If no command was mentioned, list all commands
-					message.channel.send({embed: Data.replace({
+					message.channel.send({embed: Data.replaceEmbed({
 						title: 'Command Categories',
 						description: `\`{prefix}help <command>\` to show how to use a specific command.`,
 						fields: Object.values(Data.getAllCommands()).map((category) => { return {
@@ -71,9 +71,9 @@ module.exports = {
 
 				if(args.length > 0 && Data.isAdmin(message.member)) {
 					Data.setData('prefix', args[0].trim())
-					message.channel.send({embed: Data.replace({ description: 'Changed the prefix to `{prefix}`' })})
+					message.channel.send({embed: Data.replaceEmbed({ description: 'Changed the prefix to `{prefix}`' })})
 				} else {
-					message.channel.send({embed: Data.replace({ description: 'Current prefix: `{prefix}`' })})
+					message.channel.send({embed: Data.replaceEmbed({ description: 'Current prefix: `{prefix}`' })})
 				}
 			},
 		}, {
@@ -95,7 +95,7 @@ module.exports = {
 						for(let [channel, foo] of message.channel.guild.channels.cache) {
 							if(channel !== message.channel.id) setPerm(channel, false)
 						}
-						message.channel.send({ embed: Data.replace({
+						message.channel.send({ embed: Data.replaceEmbed({
 							title: `🔴 All channels except #${message.channel.name} now disabled!`,
 							description: `You can use \`{prefix}perm\` to list the channels.`
 						})})
@@ -107,7 +107,7 @@ module.exports = {
 						for(let [channel, foo] of message.channel.guild.channels.cache) {
 							setPerm(channel, true)
 						}
-						message.channel.send({ embed: Data.replace({
+						message.channel.send({ embed: Data.replaceEmbed({
 							title: `🟢 All channels now enabled!`,
 							description: `You can use \`{prefix}perm\` to list the channels.`
 						})})
@@ -115,11 +115,33 @@ module.exports = {
 						setPerm(message.mentions.channels.first().id, true, message.channel)
 					}
 				} else {	// List the permissions of all channels
-			
 					showPerm(message)
-			
 				}
 			},
+		}, {
+			name: 'Color Setting',
+			alias: ['color', 'setColor', 'botColor', 'configColor'],
+			description: `Update the default color I'm using for all my embeds!`,
+			usage: [
+				['color', 'Show the current color'],
+				['color <hex>', 'Set a new color (e.g. #d2da87)']
+			],
+			public: false,
+			developer: false,
+			guildOnly: true,
+			execute(message, args) {
+				if(args.length > 0) {
+					const color = Tools.parseHex(args[0])
+					if(color !== undefined) {
+						Data.setData('color', color)
+						showColor(message)
+					} else {
+						Tools.fault(message.channel, `That isn't a valid hex code!`)
+					}
+				} else {
+					showColor(message)
+				}
+			}
 		}
 	]
 }
@@ -156,7 +178,7 @@ function setPerm(channel, enabled, msgChannel) {
 	if(enabled && !Data.getData(`disabled.${channel}`)) return Tools.fault(msgChannel, 'That channel is already enabled!')
 
 	Data.setData(enabled ? 'enabled' : 'disabled', channel)
-	if(msgChannel !== undefined) msgChannel.send({ embed: Data.replace({
+	if(msgChannel !== undefined) msgChannel.send({ embed: Data.replaceEmbed({
 		title: enabled ? '🟢 I\'ve enabled that channel!' : `🔴 I've disabled that channel!`,
 		description: `Now I won't be able to use <#${channel}> ;-; \nYou can use \`{prefix}perm\` to list the channels.`
 	})});
@@ -186,7 +208,7 @@ function showPerm(message) {
 		categories[category].channels.sort((a, b) => a.position - b.position)
 	}
 
-	message.channel.send({embed: Data.replace({
+	message.channel.send({embed: Data.replaceEmbed({
 		title: 'Channel Permissions',
 		description: soloChannels.map((channel) => `${Data.getData(`disabled.${channel.id}`) ? '🔴' : '🟢'} <#${channel.id}>`).join('\n'),
 		fields: categories.map((category) => { return {
@@ -195,4 +217,18 @@ function showPerm(message) {
 			inline: true
 		}})
 	})})
+}
+
+
+function showColor(message) {
+	message.channel.send({
+		embed: Data.replaceEmbed({
+			title: 'Color is Set to: {color}',
+			image: { url: 'attachment://color.jpg' }
+		}),
+		files: [{
+			attachment: Tools.createColorImage(Data.getData('color'), 600, 200),
+			name: 'color.jpg'
+		}]
+	})
 }

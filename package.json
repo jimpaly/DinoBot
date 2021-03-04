@@ -1,6 +1,6 @@
 {
   "name": "dinobot",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Bot for a Discord server I'm in",
   "main": "bot.js",
   "scripts": {
@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/jimpaly/DinoBot#readme",
   "dependencies": {
+    "canvas": "^2.7.0",
     "discord.js": "^12.5.1",
     "ytdl-core": "^4.5.0"
   }

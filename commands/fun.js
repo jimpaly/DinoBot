@@ -18,12 +18,12 @@ module.exports = {
 			execute(message, args) {
 
 				if(message.mentions.channels.size < 1) {
-					message.channel.send({embed: Data.replace({ 
+					message.channel.send({embed: Data.replaceEmbed({ 
 						description: 'Current counting channel: {counting}'
 					})})
 				} else {
 					Data.setData('counting', message.mentions.channels.first().id)
-					message.channel.send({embed: Data.replace({ 
+					message.channel.send({embed: Data.replaceEmbed({ 
 						description: 'Changed the counting channel to {counting}'
 					})})
 				}
@@ -103,7 +103,7 @@ module.exports = {
 };
 
 function sendStatus(channel, message, member) {
-	channel.send(message, { embed: Data.replace({
+	channel.send(message, { embed: Data.replaceEmbed({
 		title: `Reaction/Text Preference of ${member.displayName}`,
 		description: `Reactions are {text.${member.id}} for you!`
 	})});

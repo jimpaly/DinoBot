@@ -3,5 +3,6 @@
   "description": "Bot settings which can be updated with the config commands.",
   "file": "config.json",
   "prefix": ",",
+  "color": "",
   "disabled": []
 }

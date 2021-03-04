@@ -1,13 +1,16 @@
-//jshint esversion: 6
-
 const Discord = require('discord.js')
 const fs = require('fs')
 const private = require('./private.json')
 const Data = require('./bot.js')
+const Canvas = require('canvas')
 
 module.exports = {
 
-	// Error message sending
+	/**
+	 * Send a message when a person messes up when interacting with the bot
+	 * @param {Discord.TextChannel} channel The channel to send the message to
+	 * @param {string} message The message to send
+	 */
     fault(channel, message) {
 		if(channel === undefined) return;
         channel.send(
@@ -16,6 +19,11 @@ module.exports = {
             .setDescription(Data.replace(message))
         )
     },
+	/**
+	 * Send a notice when an error occurs
+	 * @param {Discord.TextChannel} channel The channel to send the error to
+	 * @param err The error
+	 */
     error(channel, err) {
         channel.send(
             new Discord.MessageEmbed()
@@ -25,10 +33,58 @@ module.exports = {
         console.error(err)
     },
 
-	isAdmin(member) {
-		if(member.hasPermission('ADMINISTRATOR')) return true
-		if(member.id === 'MY_USER_ID') return true
-		return false
+	
+	createColorImage(color, width, height) {
+
+		const canvas = Canvas.createCanvas(width, height)
+		const ctx = canvas.getContext('2d')
+
+		ctx.textAlign = 'center'
+		ctx.textBaseline = 'middle'
+		ctx.font = `bold ${height/2}px Courier New`
+
+		if(this.isHex(color)) {
+			ctx.fillStyle = color
+			ctx.fillRect(0, 0, width, height)
+	
+			const rgb = this.hexToRgb(color)
+			ctx.fillStyle = (rgb.r*0.299 + rgb.g*0.587 + rgb.b*0.114) > 186 ? '#000000' : '#ffffff'
+			ctx.fillText(color, width/2, height/2)
+		} else {
+			ctx.fillStyle = '#000000'
+			ctx.fillRect(0, 0, width, height)
+			ctx.fillStyle = '#ffffff'
+			ctx.fillText('COLOR NOT SET', width/2, height/2)
+		}
+
+		return canvas.toBuffer()
+	},
+	/**
+	 * Checks if a hex string is a good color
+	 * @param {string} color The hex string to check
+	 * @returns True if the string is formatted correctly
+	 */
+	isHex(color) {
+		return color.startsWith('#') && /^[0-9a-f]+$/.test(color.slice(1))
+	},
+	/**
+	 * Parse a hex string to the format the bot uses
+	 * @param {string} color The color string to parse
+	 */
+	parseHex(color) {
+		if(!color.startsWith('#')) color = '#'+color
+		if(/^[0-9a-f]+$/i.test(color.slice(1))) return color.toLowerCase()
+		return ""
+	},
+	rgbToHex(r, g, b) {
+		return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+	},
+	hexToRgb(hex) {
+		return {
+			r: parseInt(hex.slice(1, 3), 16),
+			g: parseInt(hex.slice(3, 5), 16),
+			b: parseInt(hex.slice(5, 7), 16)
+		}
 	},
 
 
