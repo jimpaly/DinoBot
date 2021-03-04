@@ -1,5 +1,6 @@
-const Tools = require('../tools.js')
-const Data = require('../bot.js')
+const Tools = require('../tools')
+const Data = require('../data')
+const Commands = require('../commands')
 
 module.exports = {
 	name: 'Utility',
@@ -23,7 +24,7 @@ module.exports = {
 			guildOnly: false,
 			execute(message, args) {
 
-				const command = getCommand(args[0])
+				const command = Commands.getCommand(args[0])
 
 				if(command !== undefined) {	// If command exists, show information
 					message.channel.send({embed: Data.replaceEmbed({
@@ -48,11 +49,9 @@ module.exports = {
 					message.channel.send({embed: Data.replaceEmbed({
 						title: 'Command Categories',
 						description: `\`{prefix}help <command>\` to show how to use a specific command.`,
-						fields: Object.values(Data.getAllCommands()).map((category) => { return {
-							name: category.name,
-							value: `\`${category.commands.map((command) => command.alias[0]).join('` `')}\``
-						}})
-					})})
+						fields: Object.entries(Commands.getCommands()).map((command) => { return {
+							name: command[0], value: `\`${command[1].join('` `')}\``}})
+					})}) 
 				}
 		
 			}
@@ -70,7 +69,7 @@ module.exports = {
 			execute(message, args) {
 
 				if(args.length > 0 && Data.isAdmin(message.member)) {
-					Data.setData('prefix', args[0].trim())
+					Data.set('prefix', args[0].trim())
 					message.channel.send({embed: Data.replaceEmbed({ description: 'Changed the prefix to `{prefix}`' })})
 				} else {
 					message.channel.send({embed: Data.replaceEmbed({ description: 'Current prefix: `{prefix}`' })})
@@ -133,7 +132,7 @@ module.exports = {
 				if(args.length > 0) {
 					const color = Tools.parseHex(args[0])
 					if(color !== undefined) {
-						Data.setData('color', color)
+						Data.set('color', color)
 						showColor(message)
 					} else {
 						Tools.fault(message.channel, `That isn't a valid hex code!`)
@@ -146,24 +145,6 @@ module.exports = {
 	]
 }
 
-/**
- * Get the info of a command
- * @param {string} alias The alias used for the command
- * @returns The command info (nothing if can't find)
- */
-function getCommand(alias) {
-
-	if(alias === undefined) return
-
-	const commands = Data.getAllCommands()
-
-	for(const category in commands) {
-		for(const command of commands[category].commands) {
-			if(command.alias.includes(alias.toLowerCase())) return command
-		}
-	}
-}
-
 
 /**
  * Set the permissions of a channel
@@ -174,10 +155,10 @@ function getCommand(alias) {
 function setPerm(channel, enabled, msgChannel) {
 	
 	if(channel === undefined) return Tools.fault(msgChannel, `I can't find that channel!`)
-	if(!enabled && Data.getData(`disabled.${channel}`)) return Tools.fault(msgChannel, `That channel is already disabled!`)
-	if(enabled && !Data.getData(`disabled.${channel}`)) return Tools.fault(msgChannel, 'That channel is already enabled!')
+	if(!enabled && Data.get(`disabled.${channel}`)) return Tools.fault(msgChannel, `That channel is already disabled!`)
+	if(enabled && !Data.get(`disabled.${channel}`)) return Tools.fault(msgChannel, 'That channel is already enabled!')
 
-	Data.setData(enabled ? 'enabled' : 'disabled', channel)
+	Data.set(enabled ? 'enabled' : 'disabled', channel)
 	if(msgChannel !== undefined) msgChannel.send({ embed: Data.replaceEmbed({
 		title: enabled ? '🟢 I\'ve enabled that channel!' : `🔴 I've disabled that channel!`,
 		description: `Now I won't be able to use <#${channel}> ;-; \nYou can use \`{prefix}perm\` to list the channels.`
@@ -210,10 +191,10 @@ function showPerm(message) {
 
 	message.channel.send({embed: Data.replaceEmbed({
 		title: 'Channel Permissions',
-		description: soloChannels.map((channel) => `${Data.getData(`disabled.${channel.id}`) ? '🔴' : '🟢'} <#${channel.id}>`).join('\n'),
+		description: soloChannels.map((channel) => `${Data.get(`disabled.${channel.id}`) ? '🔴' : '🟢'} <#${channel.id}>`).join('\n'),
 		fields: categories.map((category) => { return {
 			name: category.category.name,
-			value: category.channels.map((channel) => `${Data.getData(`disabled.${channel.id}`) ? '🔴' : '🟢'} <#${channel.id}>`).join('\n'),
+			value: category.channels.map((channel) => `${Data.get(`disabled.${channel.id}`) ? '🔴' : '🟢'} <#${channel.id}>`).join('\n'),
 			inline: true
 		}})
 	})})
@@ -227,7 +208,7 @@ function showColor(message) {
 			image: { url: 'attachment://color.jpg' }
 		}),
 		files: [{
-			attachment: Tools.createColorImage(Data.getData('color'), 600, 200),
+			attachment: Tools.createColorImage(Data.get('color'), 600, 200),
 			name: 'color.jpg'
 		}]
 	})

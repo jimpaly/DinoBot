@@ -1,0 +1,88 @@
+{
+    "name": "Leveling",
+    "description": "Data for the leveling system",
+    "file": "levels.json",
+    "config": {
+        "channel": "",
+        "disabled": [],
+        "messaging": {
+            "points": 5,
+            "cooldown": 0
+        },
+        "voice": {
+            "points": 5,
+            "cooldown": 5
+        },
+        "bump": 0,
+        "counting": 0,
+        "invite": 0
+    },
+    "profiles": {
+        "template": {
+            "bio": "",
+            "background": ""
+        }
+    },
+    "invites": {
+        "template": {
+            "joined": {
+                "first": 0,
+                "firstInvite": "",
+                "last": 0,
+                "lastInvite": ""
+            },
+            "invites": []
+        }
+    },
+    "levels": {
+        "template": {
+            "messageCooldown": 0,
+            "voiceCooldown": 0,
+            "allTime": {
+                "points": 0,
+                "rep": 0,
+                "money": 0,
+                "messages": 0,
+                "voice": 0,
+                "bumps": 0,
+                "counting": 0
+            },
+            "daily": {
+                "points": 0,
+                "rep": 0,
+                "money": 0,
+                "messages": 0,
+                "voice": 0,
+                "bumps": 0,
+                "counting": 0
+            },
+            "weekly": {
+                "points": 0,
+                "rep": 0,
+                "money": 0,
+                "messages": 0,
+                "voice": 0,
+                "bumps": 0,
+                "counting": 0
+            },
+            "monthly": {
+                "points": 0,
+                "rep": 0,
+                "money": 0,
+                "messages": 0,
+                "voice": 0,
+                "bumps": 0,
+                "counting": 0
+            },
+            "annual": {
+                "points": 0,
+                "rep": 0,
+                "money": 0,
+                "messages": 0,
+                "voice": 0,
+                "bumps": 0,
+                "counting": 0
+            }
+        }
+    }
+}

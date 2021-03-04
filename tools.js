@@ -1,7 +1,7 @@
 const Discord = require('discord.js')
 const fs = require('fs')
 const private = require('./private.json')
-const Data = require('./bot.js')
+const Data = require('./data')
 const Canvas = require('canvas')
 
 module.exports = {
@@ -84,6 +84,50 @@ module.exports = {
 			r: parseInt(hex.slice(1, 3), 16),
 			g: parseInt(hex.slice(3, 5), 16),
 			b: parseInt(hex.slice(5, 7), 16)
+		}
+	},
+
+
+	matchArgs(args, match) {
+		for(const i in args) {
+			if(match[i] === undefined || match[i] === '*') continue
+			if(Array.isArray(match[i]) && match[i].includes(args[i])) return false
+			if(!Array.isArray(match[i]) && match[i] === args[i]) return false
+		}
+		return true
+	},
+
+
+	/**
+	 * Save an object to a specified file
+	 * @param object The object to be saved
+	 * @param {string} file The file name to save to
+	 */
+	saveJSON(object, file) {
+		fs.writeFile(file, JSON.stringify(object, null, 4), (err) => {
+			if (err) console.log(`fault writing file ${file}:`, err)
+		})
+	},
+
+	/**
+	 * Copies all properties of an object to a new object
+	 * @param object The object to clone
+	 */
+	clone(object) {
+		if(typeof object !== 'object') {
+			return object
+		} else if(Array.isArray(object)) {
+			let newObject = []
+			for(const element of object) {
+				newObject.push(this.clone(element))
+			}
+			return newObject
+		} else {
+			let newObject = {}
+			for(const property in object) {
+				newObject[property] = this.clone(object[property])
+			}
+			return newObject
 		}
 	},
 

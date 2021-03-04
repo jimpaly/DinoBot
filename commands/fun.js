@@ -1,5 +1,5 @@
 const Tools = require('../tools')
-const Data = require('../bot')
+const Data = require('../data')
 
 module.exports = {
 	name: 'Fun',
@@ -22,7 +22,7 @@ module.exports = {
 						description: 'Current counting channel: {counting}'
 					})})
 				} else {
-					Data.setData('counting', message.mentions.channels.first().id)
+					Data.set('counting', message.mentions.channels.first().id)
 					message.channel.send({embed: Data.replaceEmbed({ 
 						description: 'Changed the counting channel to {counting}'
 					})})
@@ -43,10 +43,10 @@ module.exports = {
 				if(args.length < 1 || ['show', 'display'].includes(args[0])) {
 					sendStatus(message.channel, '', message.member);
 				} else if(['enable', 'on', 'true', 'yes'].includes(args[0])) {
-					Data.setData(`text.enable`, message.member.id)
+					Data.set(`text.enable`, message.member.id)
 					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${member.id}>`, member);
 				} else if(['disable', 'off', 'false', 'no'].includes(args[0])) {
-					Data.setData(`text.disable`, message.member.id)
+					Data.set(`text.disable`, message.member.id)
 					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${member.id}>`, member);
 				}
 			}
@@ -74,7 +74,7 @@ module.exports = {
 	},
 	react(message) {
 
-		if(Data.getData(`text.${message.member.id}`)) return
+		if(Data.get(`text.${message.member.id}`)) return
 
 		m = trimPunc(message.content);
 
