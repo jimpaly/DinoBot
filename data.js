@@ -1,5 +1,4 @@
 const fs = require('fs')
-const Tools = require('./tools')
 const private = require('./private.json')
 
 // Load data
@@ -212,3 +211,7 @@ function pointsToLevel(points) {
 function levelToPoints(level) {
     return level*100
 }
+
+
+
+const Tools = require('./tools')

@@ -47,7 +47,7 @@ module.exports = {
 					})})
 				} else {	// If no command was mentioned, list all commands
 					message.channel.send({embed: Data.replaceEmbed({
-						title: 'Command Categories',
+						title: 'All Commands',
 						description: `\`{prefix}help <command>\` to show how to use a specific command.`,
 						fields: Object.entries(Commands.getCommands()).map((command) => { return {
 							name: command[0], value: `\`${command[1].join('` `')}\``}})

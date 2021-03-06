@@ -1,6 +1,5 @@
 const Discord = require('discord.js')
 const fs = require('fs')
-const private = require('./private.json')
 const Data = require('./data')
 const Canvas = require('canvas')
 

@@ -51,7 +51,6 @@ module.exports = {
         for(const category in commands) {
             for(const command of commands[category].commands) {
                 if(command.alias.includes(alias.toLowerCase())) {
-                    delete command.execute
                     return command
                 }
             }
