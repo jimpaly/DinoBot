@@ -1,30 +1,12 @@
 const Tools = require('../tools')
-const Data = require('../data')
+const Data = require('../data');
+const { isNumber } = require('../tools');
 
 module.exports = {
 	name: 'Leveling',
 	description: 'Create a profile, gain points, raise your level, and have fun!',
 	commands: [
 		{
-            name: 'Leveling Configuration',
-            alias: ['levelConfig', 'lvlConfig', 'levelSettings', 'lvlSettings'],
-            description: `Set different leveling settings (cooldowns are in minutes)`,
-            usage: [
-                ['levelConfig show|list', `Show all leveling settings`],
-                ['levelConfig message [points] [cooldown]', 'Set points gained from text messaging'],
-                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
-                ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
-                ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
-                ['levelConfig invite [points]', 'Set points gained for inviting someone'],
-                ['levelConfig voice [points] [cooldown]', 'Set points gained every [cooldown] minutes in vc']
-            ],
-            public: false,
-            developer: false,
-            guildOnly: true,
-            execute(message, args) {
-                message.channel.send('blop')
-            }
-        }, {
 			name: 'Profile',
 			alias: ['profile', 'p', 'pf', 'user', 'player'],
 			description: `Show your profile card and update your info!`,
@@ -104,7 +86,46 @@ module.exports = {
             execute(message, args) {
                 message.channel.send('blop')
             }
-        }
+        }, {
+            name: 'Leveling Configuration',
+            alias: ['levelconfig', 'lvlconfig', 'levelsettings', 'lvlsettings'],
+            description: `Set different leveling settings (cooldowns are in minutes)`,
+            usage: [
+                ['levelConfig show|list', `Show all leveling settings`],
+                ['levelConfig message [points] [cooldown]', 'Set points gained from text messaging'],
+                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
+                ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
+                ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
+                ['levelConfig invite [points]', 'Set points gained for inviting someone'],
+                ['levelConfig voice [points] [cooldown]', 'Set points gained every [cooldown] minutes in vc']
+            ],
+            public: false,
+            developer: false,
+            guildOnly: true,
+            execute(message, args) {
+                if(['show', 'list', 'all', 'settings'].includes(args[0])) {
+                    message.channel.send({embed: Data.replaceEmbed({
+                        title: 'Leveling Settings',
+                        description: `
+                        **Messaging:** {level.messaging} every {level.messaging.cooldown} sending messages
+                        **Voice:** {level.voice} every {level.voice.cooldown} in a voice chat with another human
+                        **Bump:** {level.bump} for each Disboard bump through the command
+                        **Counting:** {level.counting} for each correct count in {counting}
+                        **Invite:** {level.invite} for each invite (points removed if invite leaves)`
+                    })})
+                } else if(['message', 'messaging', 'texting', 'text'].includes(args[0])) {
+                    if(args.length == 0) {
+                        message.channel.send(Data.replace('Messaging settings: {level.messaging}, {level.messaging.cooldown}'))
+                    } else {
+                        if(Tools.isNumber(args[1])) Data.set('level.messaging', parseInt(args[1]))
+                        if(Tools.isNumber(args[2])) Data.set('level.messaging.cooldown', parseInt([args[2]]))
+                        message.channel.send(Data.replace('Messaging settings set to: {level.messaging}, {level.messaging.cooldown}'))
+                    }
+                } else {
+                    message.channel.send('blop')
+                }
+            }
+        }, 
 	],
     level(message) {
 
@@ -112,17 +133,19 @@ module.exports = {
 
         if(message.author.bot) return;
 
-        let stats = Data.get(`member.${message.member.id}.stats`)
+        let stats = {}
+        let id = message.member.id
 
         // Points
-        if(message.createdTimestamp - stats.messageCooldown > Data.get('messageCooldown')*60000) {
+        if(message.createdTimestamp - Data.get(`member.${id}.messageCooldown`) > Data.get('level.messaging.cooldown')*60000) {
             for(const category of ['allTime','daily','weekly','monthly','annual'])
-                stats[category].points += Data.get('messagePoints')
+                Tools.setSafe(stats, Data.get(`member.${id}.points.${category}`) + Data.get('level.messaging'), category, 'points')
+
         }
 
         //Messages
         for(const category of ['allTime','daily','weekly','monthly','annual'])
-            stats[category].messages += 1
+            Tools.setSafe(stats, Data.get(`member.${id}.messages.${category}`) + 1, category, 'messages')
 
         stats.messageCooldown = message.createdTimestamp
 
@@ -169,6 +192,25 @@ function showLevel(channel, member) {
 }
 
 /*
+
+
+    "profiles": {
+        "template": {
+            "bio": "",
+            "background": ""
+        }
+    },
+    "invites": {
+        "template": {
+            "joined": {
+                "first": 0,
+                "firstInvite": "",
+                "last": 0,
+                "lastInvite": ""
+            },
+            "invites": []
+        }
+    },
 
     "template": {
       "messageCooldown": 0,

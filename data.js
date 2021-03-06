@@ -58,11 +58,13 @@ module.exports = {
 			case 'prefix': return data['Configuration'].prefix
 			case 'disabled': return data['Configuration'].disabled
 			case 'color': return data['Configuration'].color
-			case 'messageCooldown': return data['Leveling'].config.messaging.cooldown
-			case 'messagePoints': return data['Leveling'].config.messaging.points
-			case 'voiceCooldown': return data['Leveling'].config.voice.cooldown
-			case 'voicePoints': return data['Leveling'].config.voice.points
-			case 'levels.messageCooldown': return data['Leveling'].config.messaging.cooldown
+			case 'level.messaging.cooldown': return data['Leveling'].config.messaging.cooldown
+			case 'level.messaging': return data['Leveling'].config.messaging.points
+			case 'level.voice.cooldown': return data['Leveling'].config.voice.cooldown
+			case 'level.voice': return data['Leveling'].config.voice.points
+			case 'level.bump': return data['Leveling'].config.bump
+			case 'level.counting': return data['Leveling'].config.counting
+			case 'level.invite': return data['Leveling'].config.invite
 			case 'counting': return data['Counting'].channel
 			case 'text': return data['Text'].users
 		}
@@ -71,14 +73,11 @@ module.exports = {
 
 		if(args[0] === 'disabled') return data['Configuration'].disabled.includes(args[1])
 
-        let member = args[1]
-        if(data['Leveling'].levels[args[1]] === undefined) member = 'template'
-		if(/^member\.(.+)\.stats$/.test(name)) 
-			return Tools.clone(data['Leveling'].levels[member])
+		let stats = data['Leveling'].stats[args[1]]
 		if(/^member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name))
-			return data['Leveling'].levels[member][args[3] ?? 'allTime'][args[2]] ?? 0
-		if(/^member\.(.+)\.level$/.test(name)) 
-			return pointsToLevel(data['Leveling'].levels[member].allTime.points ?? 0)
+			return Tools.getSafe(stats, 0, args[3] ?? 'allTime', args[2])
+		if(/^member\.(.+)\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
+		if(/^member\.(.+)\.(messageCooldown|voiceCooldown)$/.test(name)) return Tools.getSafe(stats, 0, args[2])
 
 		if(args[0] === 'text') return data['Text'].users.includes(args[1])
         if(args[0] === 'counting') return data['Counting'].channel === args[1]
@@ -112,9 +111,19 @@ module.exports = {
 		// Leveling
 		didUpdate = true;
 		if(/member\.(.+)\.stats/.test(name)) {
-			data['Leveling'].levels[args[1]] = value
+			data['Leveling'].stats[args[1]] = Tools.copy(data['Leveling'].stats[args[1]], value)
+			// data['Leveling'].stats[args[1]] = Tools.copy(data['Leveling'].levels[args[1]], value)
 		} else {
-			didUpdate = false
+			switch(name) {
+				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
+				case 'level.messaging': data['Leveling'].config.messaging.points = value; break
+				case 'level.voice.cooldown': data['Leveling'].config.voice.cooldown = value; break
+				case 'level.voice': data['Leveling'].config.voice.points = value; break
+				case 'level.bump': data['Leveling'].config.bump = value; break
+				case 'level.counting': data['Leveling'].config.counting = value; break
+				case 'level.invite': data['Leveling'].config.invite = value; break
+				default: didUpdate = false
+			}
 		} if(didUpdate) return saveData('Leveling')
 
 		// Counting
@@ -169,8 +178,17 @@ function replaceStr(str) {
     str = str.replace(/{color}/gi, data['Configuration'].color)
 
     //Leveling
-    str = str.replace(/{member\.(.+)\.points(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => module.exports.get(x.slice(1, -1)))
+    str = str.replace(/{member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, 
+						(x) => module.exports.get(x.slice(1, -1)))
     str = str.replace(/{member\.(.+)\.level}/gi, (x) => module.exports.get(x.slice(1, -1)))
+	str = str.replace(/{level\.(messaging|voice|bump|counting|invite)}/gi, (x) => {
+		let points = module.exports.get(x.slice(1, -1))
+		return `${points} point${points == 1 ? '' : 's'}`
+	})
+	str = str.replace(/{level\.(messaging|voice)\.cooldown}/gi, (x) => {
+		let cooldown = module.exports.get(x.slice(1, -1))
+		return `${cooldown} minute${cooldown == 1 ? '' : 's'}`
+	})
 
     // Fun
     str = str.replace(/{counting}/gi, `<#${data['Counting'].channel}>`)

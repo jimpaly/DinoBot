@@ -130,6 +130,45 @@ module.exports = {
 			return newObject
 		}
 	},
+	copy(oldObj, newObj) {
+		if(newObj === undefined) return this.clone(oldObj)
+		if(oldObj === undefined) return this.clone(newObj)
+		if(typeof newObj !== 'object' || typeof oldObj !== 'object') return newObj
+		if(Array.isArray(newObj)) {
+			if(!Array.isArray(oldObj)) {
+				return this.clone(newObj)
+			} else {
+				let newObject = this.clone(oldObj)
+				for(const element in newObj) {
+					newObject[element] = this.copy(oldObj[element], newObj[element])
+				}
+				return newObject
+			}
+		} else {
+			let newObject = this.clone(oldObj)
+			for(const property in newObj) {
+				newObject[property] = this.copy(oldObj[property], newObj[property])
+			}
+			return newObject
+		}
+	},
+
+	getSafe(object, defaultVal, ...properties) {
+		if(object === undefined) return defaultVal
+		if(properties.length == 0) return object
+		return this.getSafe(object[properties[0]], defaultVal, ...properties.slice(1))
+	},
+	setSafe(object, value, ...properties) {
+		if(properties.length == 0) return object = value
+		if(properties.length == 1) return object[properties[0]] = value
+		if(object[properties[0]] === undefined) object[properties[0]] = {}
+		this.setSafe(object[properties[0]], value, ...properties.slice(1))
+	},
+
+
+	isNumber(number) {
+		return /^[0-9]+$/.test(number)
+	},
 
 
 	success(channel, message) {
