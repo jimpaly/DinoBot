@@ -31,7 +31,7 @@ client.on('message', message => {
 	if(Data.get(`disabled.${message.channel.id}`)) return
 	message.content = message.content.trim()
 
-	Commands.call('level', message)
+	if(!message.author.bot) Commands.call('level', message)
 
 	// Check if it's a command or not
 	if(message.content.startsWith(Data.get('prefix'))) {

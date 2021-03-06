@@ -73,8 +73,10 @@ module.exports = {
 		if(args[0] === 'disabled') return data['Configuration'].disabled.includes(args[1])
 
 		let stats = data['Leveling'].stats[args[1]]
-		if(/^member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name))
+		if(/^member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name)) {
+			resetStats(args[1], args[2])
 			return Tools.getSafe(stats, 0, args[3] ?? 'allTime', args[2])
+		}
 		if(/^member\.(.+)\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
 		if(/^member\.(.+)\.(messageCooldown|voiceCooldown)$/.test(name)) return Tools.getSafe(stats, 0, args[2])
 
@@ -86,7 +88,7 @@ module.exports = {
 	 * @param {string} name The name of the data
 	 * @param value The new value to set the data to 
 	 */
-	set(name, value) {
+	set(name, value, save = true) {
 
 		const args = name.split('.')
 
@@ -95,7 +97,7 @@ module.exports = {
 		switch(name) {
 			case 'status': private.status = value; break
 			default: didUpdate = false
-		} if(didUpdate) return Tools.saveJSON(private, './private.json')
+		} if(didUpdate && save) return Tools.saveJSON(private, './private.json')
 
 		// Configuration
 		didUpdate = true;
@@ -105,13 +107,17 @@ module.exports = {
 			case 'enabled': data['Configuration'].disabled.splice(data['Configuration'].disabled.indexOf(value), 1); break
 			case 'color': data['Configuration'].color = value; break
 			default: didUpdate = false
-		} if(didUpdate) return saveData('Configuration')
+		} if(didUpdate && save) return this.save('Configuration')
 
 		// Leveling
 		didUpdate = true;
-		if(/member\.(.+)\.stats/.test(name)) {
-			data['Leveling'].stats[args[1]] = Tools.copy(data['Leveling'].stats[args[1]], value)
-			// data['Leveling'].stats[args[1]] = Tools.copy(data['Leveling'].levels[args[1]], value)
+		let stats = data['Leveling'].stats
+		if(/^member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)$/.test(name)) {
+			for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual'])
+				Tools.setSafe(stats, Tools.getSafe(stats, 0, args[1], category, args[2])+value, args[1], category, args[2])
+			resetStats(args[1])
+		} else if(/^member\.(.+)\.(messageCooldown|voiceCooldown)$/.test(name)) {
+			Tools.setSafe(stats, value, args[1], args[2])
 		} else {
 			switch(name) {
 				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
@@ -123,14 +129,14 @@ module.exports = {
 				case 'level.invite': Tools.paste(data['Leveling'].config.invite, value); break
 				default: didUpdate = false
 			}
-		} if(didUpdate) return saveData('Leveling')
+		} if(didUpdate && save) return this.save('Leveling')
 
 		// Counting
 		didUpdate = true;
 		switch(name) {
 			case 'counting': data['Counting'].channel = value; break
 			default: didUpdate = false
-		} if(didUpdate) return saveData('Counting')
+		} if(didUpdate && save) return this.save('Counting')
 
 		// Text
 		didUpdate = true;
@@ -138,7 +144,14 @@ module.exports = {
 			case 'text.disable': data['Text'].users.push(value); break
 			case 'text.enable': data['Text'].users.splice(data['Text'].users.indexOf(value), 1); break
 			default: didUpdate = false
-		} if(didUpdate) return saveData('Text')
+		} if(didUpdate && save) return this.save('Text')
+	},
+	/**
+	 * Save data to its file
+	 * @param {string} name The name of the data to be saved
+	 */
+	save(name) {
+		Tools.saveJSON(data[name], `./data/${data[name].file}`)
 	},
 
 	/**
@@ -197,14 +210,6 @@ function replaceStr(str) {
     return str
 }
 
-/**
- * Save data to its file
- * @param {string} name The name of the data to be saved
- */
-function saveData(name) {
-    Tools.saveJSON(data[name], `./data/${data[name].file}`)
-}
-
 function pointsToLevel(points) {
     return Math.floor(points/100)
 }
@@ -212,6 +217,17 @@ function levelToPoints(level) {
     return level*100
 }
 
+function resetStats(member) {
+	let lastUpdate = Tools.getSafe(data['Leveling'].stats, Date.now(), member, 'lastUpdate'); 
+	for(const stat of ['points', 'rep', 'money', 'messages', 'voice', 'bumps', 'counting']) {
+		let date = new Date()
+		date.setHours(0, 0, 0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'daily', stat)
+		Tools.setDay(date); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'weekly', stat)
+		date.setDate(1); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'monthly', stat)
+		date.setMonth(0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'annual', stat)
+	}
+	Tools.setSafe(data['Leveling'].stats, Date.now(), member, 'lastUpdate')
+}
 
 
 const Tools = require('./tools')

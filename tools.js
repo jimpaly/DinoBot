@@ -201,6 +201,12 @@ module.exports = {
 		return this.random(range.min, range.max)
 	},
 
+	setDay(date, weekday = 1) {
+		let day = date.getDay()
+		if(day < weekday) day += 7
+		date.setHours(-24 * (day - weekday))
+	},
+
 
 	success(channel, message) {
 		channel.send({ embed: {

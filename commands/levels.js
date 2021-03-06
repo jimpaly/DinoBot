@@ -152,19 +152,16 @@ module.exports = {
 
         // Points
         if(message.createdTimestamp - Data.get(`member.${id}.messageCooldown`) > Data.get('level.messaging.cooldown')*60000) {
-            let pointGain = Tools.randomRange(Data.get('level.messaging'))
-            for(const category of ['allTime','daily','weekly','monthly','annual'])
-                Tools.setSafe(stats, Data.get(`member.${id}.points.${category}`) + pointGain, category, 'points')
-
+            Data.set(`member.${message.member.id}.points`, Tools.randomRange(Data.get('level.messaging')), false)
         }
 
         //Messages
-        for(const category of ['allTime','daily','weekly','monthly','annual'])
-            Tools.setSafe(stats, Data.get(`member.${id}.messages.${category}`) + 1, category, 'messages')
+        Data.set(`member.${message.member.id}.messages`, 1, false)
 
-        stats.messageCooldown = message.createdTimestamp
+        Data.set(`member.${message.member.id}.messageCooldown`, message.createdTimestamp, false)
 
-        Data.set(`member.${message.member.id}.stats`, stats)
+        Data.save('Leveling')
+        // Data.set(`member.${message.member.id}.stats`, stats)
     }
 };
 
