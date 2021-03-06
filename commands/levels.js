@@ -92,9 +92,9 @@ module.exports = {
             description: `Set different leveling settings (cooldowns are in minutes)`,
             usage: [
                 ['levelConfig show|list', `Show all leveling settings`],
-                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],,
+                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
                 ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
-                ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc']
+                ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc'],
                 ['levelConfig bump [min points] [max points]', 'Set points gained by bumping with Disboard'],
                 ['levelConfig counting [min points] [max points]', 'Set points gained for each counting in {counting}'],
                 ['levelConfig invite [min points] [max points]', 'Set points gained for inviting someone']
@@ -174,7 +174,7 @@ module.exports = {
  * @param {Discord.GuildMember} member The member to show stats of
  */
 function showLevel(channel, member) {
-    channel.send({embed: Data.replace({
+    channel.send({embed: Data.replaceEmbed({
         title: `Levels of ${member.displayName}`,
         fields: [
             {

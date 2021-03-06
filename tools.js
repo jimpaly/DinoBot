@@ -13,11 +13,10 @@ module.exports = {
 	 */
     fault(channel, message) {
 		if(channel === undefined) return;
-        channel.send(
-            new Discord.MessageEmbed()
-            .setTitle('OOPS!')
-            .setDescription(Data.replace(message))
-        )
+        channel.send({embed: Data.replaceEmbed({
+			title: 'OOPS!',
+			description: message
+		})})
     },
 	/**
 	 * Send a notice when an error occurs
@@ -25,11 +24,10 @@ module.exports = {
 	 * @param err The error
 	 */
     error(channel, err) {
-        channel.send(
-            new Discord.MessageEmbed()
-            .setTitle('OOF!')
-            .setDescription('I seem to be having a problem... Don\'t worry, this isn\'t your fault.')
-        )
+        channel.send({embed: Data.replaceEmbed({
+			title: 'OOF!',
+			description: `I seem to be having a problem... Don't worry, this isn't your fault.`
+		})})
         console.error(err)
     },
 
@@ -49,12 +47,12 @@ module.exports = {
 	
 			const rgb = this.hexToRgb(color)
 			ctx.fillStyle = (rgb.r*0.299 + rgb.g*0.587 + rgb.b*0.114) > 186 ? '#000000' : '#ffffff'
-			ctx.fillText(color, width/2, height/2)
+			ctx.fillText(color, width/2, height/2, width*0.9)
 		} else {
 			ctx.fillStyle = '#000000'
 			ctx.fillRect(0, 0, width, height)
 			ctx.fillStyle = '#ffffff'
-			ctx.fillText('COLOR NOT SET', width/2, height/2)
+			ctx.fillText('COLOR NOT SET', width/2, height/2, width*0.9)
 		}
 
 		return canvas.toBuffer()
