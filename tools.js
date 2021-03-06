@@ -152,6 +152,28 @@ module.exports = {
 			return newObject
 		}
 	},
+	paste(oldObj, newObj) {
+		if(newObj === undefined) return oldObj
+		if(oldObj === undefined) return newObj
+		if(typeof newObj !== 'object' || typeof oldObj !== 'object') return newObj
+		if(Array.isArray(newObj)) {
+			if(!Array.isArray(oldObj)) {
+				return newObj
+			} else {
+				let newObject = oldObj
+				for(const element in newObj) {
+					newObject[element] = this.copy(oldObj[element], newObj[element])
+				}
+				return newObject
+			}
+		} else {
+			let newObject = oldObj
+			for(const property in newObj) {
+				newObject[property] = this.copy(oldObj[property], newObj[property])
+			}
+			return newObject
+		}
+	},
 
 	getSafe(object, defaultVal, ...properties) {
 		if(object === undefined) return defaultVal
@@ -168,6 +190,18 @@ module.exports = {
 
 	isNumber(number) {
 		return /^[0-9]+$/.test(number)
+	},
+	/**
+	 * @returns a random integer between min and max (inclusive)
+	 */
+	random(min, max) {
+		return Math.floor(Math.random() * (max+1-min)) + min;
+	},
+	/**
+	 * @returns a random integer between range.min and range.max (inclusive)
+	 */
+	randomRange(range) {
+		return this.random(range.min, range.max)
 	},
 
 
@@ -229,9 +263,6 @@ module.exports = {
 		return 'https://discordapp.com/channels/'+guild+'/'+channel+'/'+message;
 	},
 
-	random(min, max) {
-		return Math.floor(Math.random() * (max+1-min)) + min;
-	},
 	sum(array, property) {
 		sum = 0;
 		for(let num of array.map(element => element[property])) sum += num;

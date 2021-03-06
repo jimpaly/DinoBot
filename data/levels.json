@@ -6,16 +6,31 @@
         "channel": "",
         "disabled": [],
         "messaging": {
-            "points": 5,
+            "points": {
+                "min": 5,
+                "max": 15
+            },
             "cooldown": 0
         },
         "voice": {
-            "points": 5,
+            "points": {
+                "min": 5,
+                "max": 15
+            },
             "cooldown": 0
         },
-        "bump": 0,
-        "counting": 0,
-        "invite": 0
+        "bump": {
+            "min": 0,
+            "max": 0
+        },
+        "counting": {
+            "min": 0,
+            "max": 0
+        },
+        "invite": {
+            "min": 0,
+            "max": 0
+        }
     },
     "profiles": {},
     "invites": {},

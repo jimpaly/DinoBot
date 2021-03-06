@@ -116,12 +116,12 @@ module.exports = {
 		} else {
 			switch(name) {
 				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
-				case 'level.messaging': data['Leveling'].config.messaging.points = value; break
+				case 'level.messaging': Tools.paste(data['Leveling'].config.messaging.points, value); break
 				case 'level.voice.cooldown': data['Leveling'].config.voice.cooldown = value; break
-				case 'level.voice': data['Leveling'].config.voice.points = value; break
-				case 'level.bump': data['Leveling'].config.bump = value; break
-				case 'level.counting': data['Leveling'].config.counting = value; break
-				case 'level.invite': data['Leveling'].config.invite = value; break
+				case 'level.voice': Tools.paste(data['Leveling'].config.voice.points, value); break
+				case 'level.bump': Tools.paste(data['Leveling'].config.bump, value); break
+				case 'level.counting': Tools.paste(data['Leveling'].config.counting, value); break
+				case 'level.invite': Tools.paste(data['Leveling'].config.invite, value); break
 				default: didUpdate = false
 			}
 		} if(didUpdate) return saveData('Leveling')
@@ -183,7 +183,8 @@ function replaceStr(str) {
     str = str.replace(/{member\.(.+)\.level}/gi, (x) => module.exports.get(x.slice(1, -1)))
 	str = str.replace(/{level\.(messaging|voice|bump|counting|invite)}/gi, (x) => {
 		let points = module.exports.get(x.slice(1, -1))
-		return `${points} point${points == 1 ? '' : 's'}`
+		if(points.min == points.max) return `${points.max} point${points.max == 1 ? '' : 's'}`
+		return `${points.min} to ${points.max} point${points.max == 1 ? '' : 's'}`
 	})
 	str = str.replace(/{level\.(messaging|voice)\.cooldown}/gi, (x) => {
 		let cooldown = module.exports.get(x.slice(1, -1))

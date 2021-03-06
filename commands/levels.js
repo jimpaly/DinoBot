@@ -92,12 +92,12 @@ module.exports = {
             description: `Set different leveling settings (cooldowns are in minutes)`,
             usage: [
                 ['levelConfig show|list', `Show all leveling settings`],
-                ['levelConfig message [points] [cooldown]', 'Set points gained from text messaging'],
-                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
-                ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
-                ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
-                ['levelConfig invite [points]', 'Set points gained for inviting someone'],
-                ['levelConfig voice [points] [cooldown]', 'Set points gained every [cooldown] minutes in vc']
+                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],,
+                ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
+                ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc']
+                ['levelConfig bump [min points] [max points]', 'Set points gained by bumping with Disboard'],
+                ['levelConfig counting [min points] [max points]', 'Set points gained for each counting in {counting}'],
+                ['levelConfig invite [min points] [max points]', 'Set points gained for inviting someone']
             ],
             public: false,
             developer: false,
@@ -113,14 +113,28 @@ module.exports = {
                         **Counting:** {level.counting} for each correct count in {counting}
                         **Invite:** {level.invite} for each invite (points removed if invite leaves)`
                     })})
-                } else if(['message', 'messaging', 'texting', 'text'].includes(args[0])) {
-                    if(args.length == 0) {
-                        message.channel.send(Data.replace('Messaging settings: {level.messaging}, {level.messaging.cooldown}'))
-                    } else {
-                        if(Tools.isNumber(args[1])) Data.set('level.messaging', parseInt(args[1]))
-                        if(Tools.isNumber(args[2])) Data.set('level.messaging.cooldown', parseInt([args[2]]))
-                        message.channel.send(Data.replace('Messaging settings set to: {level.messaging}, {level.messaging.cooldown}'))
-                    }
+                } else if(['message', 'm', 'messaging', 'texting', 'text'].includes(args[0])) {
+                    if(Tools.isNumber(args[1])) Data.set('level.messaging', { min: parseInt(args[1]) })
+                    if(Tools.isNumber(args[2])) Data.set('level.messaging', { max: parseInt(args[2]) })
+                    if(Tools.isNumber(args[3])) Data.set('level.messaging.cooldown', parseInt(args[3]))
+                    message.channel.send(Data.replace('Messaging settings set to: {level.messaging}, {level.messaging.cooldown}'))
+                } else if(['voice', 'vc', 'talk', 'speak', 'talking', 'speaking'].includes(args[0])) {
+                    if(Tools.isNumber(args[1])) Data.set('level.voice', { min: parseInt(args[1]) })
+                    if(Tools.isNumber(args[2])) Data.set('level.voice', { max: parseInt(args[2]) })
+                    if(Tools.isNumber(args[3])) Data.set('level.voice.cooldown', parseInt(args[3]))
+                    message.channel.send(Data.replace('Voice settings set to: {level.voice}, {level.voice.cooldown}'))
+                } else if(['bump', 'bumping', 'disboard'].includes(args[0])) {
+                    if(Tools.isNumber(args[1])) Data.set('level.bump', { min: parseInt(args[1]) })
+                    if(Tools.isNumber(args[2])) Data.set('level.bump', { max: parseInt(args[2]) })
+                    message.channel.send(Data.replace('Bump settings set to: {level.bump}'))
+                } else if(['counting', 'count', 'cnt'].includes(args[0])) {
+                    if(Tools.isNumber(args[1])) Data.set('level.counting', { min: parseInt(args[1]) })
+                    if(Tools.isNumber(args[2])) Data.set('level.counting', { max: parseInt(args[2]) })
+                    message.channel.send(Data.replace('Counting settings set to: {level.counting}'))
+                } else if(['invite', 'inviting', 'inv'].includes(args[0])) {
+                    if(Tools.isNumber(args[1])) Data.set('level.invite', { min: parseInt(args[1]) })
+                    if(Tools.isNumber(args[2])) Data.set('level.invite', { max: parseInt(args[2]) })
+                    message.channel.send(Data.replace('Invite settings set to: {level.invite}'))
                 } else {
                     message.channel.send('blop')
                 }
@@ -138,8 +152,9 @@ module.exports = {
 
         // Points
         if(message.createdTimestamp - Data.get(`member.${id}.messageCooldown`) > Data.get('level.messaging.cooldown')*60000) {
+            let pointGain = Tools.randomRange(Data.get('level.messaging'))
             for(const category of ['allTime','daily','weekly','monthly','annual'])
-                Tools.setSafe(stats, Data.get(`member.${id}.points.${category}`) + Data.get('level.messaging'), category, 'points')
+                Tools.setSafe(stats, Data.get(`member.${id}.points.${category}`) + pointGain, category, 'points')
 
         }
 
