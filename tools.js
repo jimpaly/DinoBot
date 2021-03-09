@@ -171,6 +171,12 @@ module.exports = {
 			return newObject
 		}
 	},
+	mapObject(object, fn) {
+		return Object.keys(object).reduce(function(result, key) {
+			result[key] = fn(object[key])
+			return result
+		}, {})
+	},
 
 	getSafe(object, defaultVal, ...properties) {
 		if(object === undefined) return defaultVal
@@ -179,6 +185,7 @@ module.exports = {
 	},
 	setSafe(object, value, ...properties) {
 		if(properties.length == 0) return object = value
+		if(object === undefined) object = {}
 		if(properties.length == 1) return object[properties[0]] = value
 		if(object[properties[0]] === undefined) object[properties[0]] = {}
 		this.setSafe(object[properties[0]], value, ...properties.slice(1))
@@ -205,6 +212,15 @@ module.exports = {
 		let day = date.getDay()
 		if(day < weekday) day += 7
 		date.setHours(-24 * (day - weekday))
+	},
+	getHour(duration) {
+		return Math.floor((duration / (1000 * 60 * 60)) % 24)
+	},
+	getMinute(duration) {
+		return Math.floor((duration / (1000 * 60)) % 60)
+	},
+	getSecond(duration) {
+		return Math.floor((duration / 1000) % 60)
 	},
 
 

@@ -73,12 +73,15 @@ module.exports = {
 		if(args[0] === 'disabled') return data['Configuration'].disabled.includes(args[1])
 
 		let stats = data['Leveling'].stats[args[1]]
-		if(/^member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name)) {
-			resetStats(args[1], args[2])
-			return Tools.getSafe(stats, 0, args[3] ?? 'allTime', args[2])
+		if(/^member\.(.+)\.(points|messages|voice|rep|bumps|counting|invite)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name)) {
+			resetStats(args[1])
+			const stat = Tools.getSafe(stats, getDefault(args[2], args[3] ?? 'allTime'), args[3] ?? 'allTime', args[2])
+			if(args[2] === 'invite' && (args[3] === undefined || args[3] === 'allTime')) return Tools.mapObject(stat, (value) => value.length)
+			return stat
 		}
+		if(/^member\.(.+)\.invite\.(joined|left|returned)$/.test(name)) return Tools.getSafe(stats, [], 'allTime', 'invite', args[3])
 		if(/^member\.(.+)\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
-		if(/^member\.(.+)\.(messageCooldown|voiceCooldown)$/.test(name)) return Tools.getSafe(stats, 0, args[2])
+		if(/^member\.(.+)\.latest\.(message|voice|rep|repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
 
 		if(args[0] === 'text') return data['Text'].users.includes(args[1])
         if(args[0] === 'counting') return data['Counting'].channel === args[1]
@@ -111,13 +114,29 @@ module.exports = {
 
 		// Leveling
 		didUpdate = true;
-		let stats = data['Leveling'].stats
-		if(/^member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)$/.test(name)) {
-			for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual'])
-				Tools.setSafe(stats, Tools.getSafe(stats, 0, args[1], category, args[2])+value, args[1], category, args[2])
-			resetStats(args[1])
-		} else if(/^member\.(.+)\.(messageCooldown|voiceCooldown)$/.test(name)) {
-			Tools.setSafe(stats, value, args[1], args[2])
+		let stats = data['Leveling'].stats[args[1]]
+		if(/^member\.(.+)\.(points|messages|voice|rep|bumps|counting|invite)(|\.add)$/.test(name)) {
+			for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual']) {
+				if(args[3] === undefined) {
+					Tools.setSafe(stats, value, category, args[2])
+				} else if(args[2] === 'rep') {
+					let oldVal = this.get(`member.${args[1]}.${args[2]}.${category}`)
+					Tools.setSafe(stats, { 
+						given: oldVal.given + (value.given ?? 0), 
+						recieved: oldVal.recieved + (value.recieved ?? 0) 
+					}, category, args[2])
+				} else if(args[2] === 'invite') {
+					if(category === 'allTime') {
+						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`).concat(value), category, args[2])
+					} else {
+						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+1, category, args[2])
+					}
+				} else {
+					Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+value, category, args[2])
+				}
+			}
+		} else if(/^member\.(.+)\.latest\.(message|voice|rep|repTo|repFrom)$/.test(name)) {
+			Tools.setSafe(stats, value, 'latest', args[3])
 		} else {
 			switch(name) {
 				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
@@ -190,8 +209,36 @@ function replaceStr(str) {
     str = str.replace(/{color}/gi, data['Configuration'].color)
 
     //Leveling
-    str = str.replace(/{member\.(.+)\.(points|rep|money|messages|voice|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, 
+    str = str.replace(/{member\.(.+)\.(points|messages|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, 
 						(x) => module.exports.get(x.slice(1, -1)))
+	str = str.replace(/{member\.(.+)\.voice(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
+		d = module.exports.get(x.slice(1, -1))
+		return (d < 3600000 ? '' : `${Tools.getHour(d)}h `) + `${Tools.getMinute(d)}m`
+	})
+	//Rep
+	str = str.replace(/{member\.(.+)\.latest\.(repTo|repFrom)}/gi, (x) => {
+		person = module.exports.get(x.slice(1, -1))
+		if(person === 0) return 'nobody ;-;'
+		return `<@!${person}>`
+	})
+	str = str.replace(/{member\.(.+)\.rep(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
+		rep = module.exports.get(x.slice(1, -1))
+		if(args[3] === undefined) return rep.recieved - rep.given
+		return `${rep.recieved} recieved\n${rep.given} given`
+	})
+	//Invite
+	str = str.replace(/{member\.(.+)\.invite(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
+		invite = module.exports.get(x.slice(1, -1))
+		return `${invite.joined+invite.returned-invite.left}
+				${invite.joined} joined
+				${invite.left} left
+				${invite.returned} returned`
+	})
+	str = str.replace(/{member\.(.+)\.invite\.(joined|left|returned)(|\..+)}/gi, (x) => {
+		people = module.exports.get(x.slice(1, args[4] === undefined ? -1 : -args[4].length-2))
+		if(people.length === 0) return 'nobody here...'
+		return `<!@${people.slice(`-${args[4]}`).join('> <!@')}>`
+	})
     str = str.replace(/{member\.(.+)\.level}/gi, (x) => module.exports.get(x.slice(1, -1)))
 	str = str.replace(/{level\.(messaging|voice|bump|counting|invite)}/gi, (x) => {
 		let points = module.exports.get(x.slice(1, -1))
@@ -219,14 +266,21 @@ function levelToPoints(level) {
 
 function resetStats(member) {
 	let lastUpdate = Tools.getSafe(data['Leveling'].stats, Date.now(), member, 'lastUpdate'); 
-	for(const stat of ['points', 'rep', 'money', 'messages', 'voice', 'bumps', 'counting']) {
+	for(const stat of ['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite']) {
 		let date = new Date()
-		date.setHours(0, 0, 0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'daily', stat)
-		Tools.setDay(date); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'weekly', stat)
-		date.setDate(1); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'monthly', stat)
-		date.setMonth(0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, 0, member, 'annual', stat)
+		date.setHours(0, 0, 0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'daily', stat)
+		Tools.setDay(date); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'weekly', stat)
+		date.setDate(1); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'monthly', stat)
+		date.setMonth(0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'annual', stat)
 	}
 	Tools.setSafe(data['Leveling'].stats, Date.now(), member, 'lastUpdate')
+}
+
+function getDefault(stat, category = 'not allTime') {
+	if(stat === 'rep') return { given: 0, recieved: 0 }
+	if(stat === 'invite' && category === 'allTime') return { joined: [], left: [], returned: [] }
+	if(stat === 'invite') return { joined: 0, left: 0, returned: 0 }
+	return 0
 }
 
 
