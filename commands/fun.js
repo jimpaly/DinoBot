@@ -54,23 +54,29 @@ module.exports = {
 	],
 	async count(message) {
 
-		messages = await message.channel.messages.fetch({limit: 2})
-		lastMessage = messages.last()
+		if(message.bot) return message.delete().catch(error => {})
+
+		Data.set(`member.${message.author.id}.counting.add`, 1)
+
+		let messages = await message.channel.messages.fetch({limit: 2})
+		let lastMessage = messages.last()
 
 		// Return if last count was edited
 		if(lastMessage.editedTimestamp > 0) {
-			lastMessage.delete()
-			return message.delete()
+			lastMessage.delete().catch()
+			return message.delete().catch(error => {})
 		} // Return if last count was made by same author
 		if(message.createdTimestamp - lastMessage.createdTimestamp < 600000 &&
-			message.author.id === lastMessage.author.id) return message.delete()
+			message.author.id === lastMessage.author.id) return message.delete().catch(error => {})
 		
-		number = message.content.split(/\s+/)[0]
-		lastNumber = lastMessage.content.split(/\s+/)[0]
+		let number = message.content.split(/\s+/)[0]
+		let lastNumber = lastMessage.content.split(/\s+/)[0]
 		if(!lastNumber.match(/^[0-9]+$/)) lastNumber = "0"
-		if(!number.match(/^[0-9]+$/) || number - 1 != lastNumber) message.delete()
-
-        return true;
+		if(!number.match(/^[0-9]+$/) || number - 1 != lastNumber) return message.delete().catch(error => {})
+	},
+	async uncount(message) {
+		if(message.member == null) return
+		Data.set(`member.${message.author.id}.counting.add`, -1)
 	},
 	react(message) {
 

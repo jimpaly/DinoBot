@@ -39,7 +39,7 @@ module.exports = {
                 let stat = getStatName(args[0].toLowerCase())
                 if(stat === undefined) return Tools.fault(message.channel, 'That isn\'t a valid stat! Try `{prefix}help stats`')
                 if(args.length === 1) return showStat(message.channel, message.member, stat) 
-                if(message.mentions.users.size > 0) return showStat(message.channel, message.mentions.users.first(), stat)
+                if(message.mentions.members.size > 0) return showStat(message.channel, message.mentions.members.first(), stat)
                 message.guild.members.fetch({ query: args[1], limit: 1 }).then((member) => {
                     if(member.first() !== undefined) return showStat(message.channel, member.first(), stat)
                     else return showStat(message.channel, message.member, stat) 
@@ -166,9 +166,15 @@ module.exports = {
 	],
     level(message) {
 
-        //TODO: check bump
+		if(message.member == null) return
 
-        if(message.author.bot) return;
+        //TODO: check bump
+        if(message.author.id === '302050872383242240') {
+            bump = (message.embeds[0] ?? {}).description
+            if(bump !== undefined && bump.includes('Bump done')) {
+                Data.set(`member.${bump.slice(2, 20)}.bumps.add`, 1)
+            }
+        }
 
         let stats = {}
         let id = message.member.id
@@ -201,7 +207,7 @@ function showStat(channel, member, stat) {
                     stat === 'rep' ? 'Reputation' :
                     stat === 'bumps' ? 'Disboard Bumps' :
                     stat === 'counting' ? 'Counting Game Stats' :
-                    stat === 'invite' ? 'Invite Stats' : 
+                    stat === 'invite' ? 'Invite Stats' :
                     'lol pls @ Jimps'} of ${member.displayName}`
     if(stat === 'points') {
         embed.fields.push({
@@ -236,7 +242,7 @@ function showStat(channel, member, stat) {
     if(!['invite'].includes(stat)) {
         embed.fields.push({
             name: 'Weekly',
-            value: `{member.${member.id}.${stat}.daily}`,
+            value: `{member.${member.id}.${stat}.weekly}`,
             inline: true
         })
     }

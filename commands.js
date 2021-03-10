@@ -8,6 +8,7 @@ module.exports = {
         switch(name) {
             case 'level': return commands['Leveling'].level(data)
             case 'count': return commands['Fun'].count(data)
+            case 'uncount': return commands['Fun'].uncount(data)
             case 'react': return commands['Fun'].react(data)
         }
     },
