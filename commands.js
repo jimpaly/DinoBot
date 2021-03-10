@@ -7,6 +7,7 @@ module.exports = {
     call(name, data) {
         switch(name) {
             case 'level': return commands['Leveling'].level(data)
+            case 'voice': return commands['Leveling'].voice(data[0], data[1])
             case 'count': return commands['Fun'].count(data)
             case 'uncount': return commands['Fun'].uncount(data)
             case 'react': return commands['Fun'].react(data)

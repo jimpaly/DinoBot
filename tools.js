@@ -85,6 +85,23 @@ module.exports = {
 	},
 
 
+	async findMember(message, arg) {
+		if(message.mentions.members.size > 0) return message.mentions.members.first()
+		if(message.channel.type !== 'text') return
+		members = await message.guild.members.fetch({ query: arg, limit: 1 })
+		if(members.first() !== undefined) return members.first()
+	},
+	getAuthor(message) {
+		return message.member ?? message.author
+	},
+	getName(member) {
+		return member.displayName ?? member.username
+	},
+	getAvatar(member, size = 256) {
+		return (member.user ?? member).displayAvatarURL({ dynamic: true, size: size })
+	},
+
+
 	matchArgs(args, match) {
 		for(const i in args) {
 			if(match[i] === undefined || match[i] === '*') continue
@@ -214,7 +231,7 @@ module.exports = {
 		date.setHours(-24 * (day - weekday))
 	},
 	getHour(duration) {
-		return Math.floor((duration / (1000 * 60 * 60)) % 24)
+		return Math.floor(duration / (1000 * 60 * 60))
 	},
 	getMinute(duration) {
 		return Math.floor((duration / (1000 * 60)) % 60)

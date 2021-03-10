@@ -28,6 +28,8 @@ module.exports = {
 			description: `Show the detailed leveling stats of someone
                             Categories include: \`level\`, \`messages\`, \`voice\`, \`rep\`, \`bumps\`, \`counting\`, and \`invite\``,
 			usage: [
+				['stats', `Show a summary of your stats`],
+				['stats <member>', `Show a summary of someone else's stats`],
 				['stats <category>', `Show your stats for a specific category (see above description)`],
 				['stats <category> <member>', `Show someones else's stats for categories (see above description)`]
 			],
@@ -35,15 +37,22 @@ module.exports = {
 			developer: false,
 			guildOnly: false,
 			execute(message, args) {
-				if(args.length === 0) return Tools.fault(message.channel, 'Tell me what type of stat you want to show! Try `{prefix}help stats` to know which categories there are')
-                let stat = getStatName(args[0].toLowerCase())
-                if(stat === undefined) return Tools.fault(message.channel, 'That isn\'t a valid stat! Try `{prefix}help stats`')
-                if(args.length === 1) return showStat(message.channel, message.member, stat) 
-                if(message.mentions.members.size > 0) return showStat(message.channel, message.mentions.members.first(), stat)
-                message.guild.members.fetch({ query: args[1], limit: 1 }).then((member) => {
-                    if(member.first() !== undefined) return showStat(message.channel, member.first(), stat)
-                    else return showStat(message.channel, message.member, stat) 
-                })
+				if(args.length == 0) {
+                    showStat(message.channel, Tools.getAuthor(message))
+                } else if(args.length == 1) {
+                    let stat = getStatName(args[0].toLowerCase())
+                    if(stat !== undefined) showStat(message.channel, Tools.getAuthor(message), stat)
+                    else Tools.findMember(message, args[0]).then((member) => {
+                        if(member !== undefined) showStat(message.channel, member)
+                        else Tools.fault(message.channel, `${args[0]} isn't a valid stat! Try \`{prefix}help stats\` to learn more`)
+                    })
+                } else {
+                    let stat = getStatName(args[0].toLowerCase())
+                    if(stat !== undefined) Tools.findMember(message, args[1]).then((member) => {
+                        if(member !== undefined) showStat(message.channel, member, stat)
+                        else Tools.fault(message.channel, `I can't seem to find a person named ${args[1]}!`)
+                    }); else Tools.fault(message.channel, `${args[0]} isn't a valid stat! Try \`{prefix}help stats\` to learn more`)
+                }
 			}
 		}, {
 			name: 'Leveling',
@@ -53,7 +62,7 @@ module.exports = {
                         Visit {levels.channel} to learn more!`,
 			usage: [
 				['level', `Show your levels and points`],
-				['level (member) <member>', `Show someone's levels`],
+				['level <member>', `Show someone's levels`],
                 ['level leaderboard|all', `Show top members in points`]
 			],
 			public: true,
@@ -70,7 +79,7 @@ module.exports = {
             description: `Show your invite stats!`,
             usage: [
                 ['invites', `Show your stats`],
-                ['invites (member) <@member>', `Show someone else's invite stats`],
+                ['invites <@member>', `Show someone else's invite stats`],
                 ['invites leaderboard|all', 'Show top members in number of people invited'],
             ],
             public: true,
@@ -168,29 +177,70 @@ module.exports = {
 
 		if(message.member == null) return
 
-        //TODO: check bump
+        // check bump
         if(message.author.id === '302050872383242240') {
             bump = (message.embeds[0] ?? {}).description
             if(bump !== undefined && bump.includes('Bump done')) {
-                Data.set(`member.${bump.slice(2, 20)}.bumps.add`, 1)
+                Data.set(`member.${bump.slice(2, 20)}.bumps.add`, 1, false)
             }
         }
 
-        let stats = {}
         let id = message.member.id
 
         // Points
-        if(message.createdTimestamp - Data.get(`member.${id}.latest.message`) > Data.get('level.messaging.cooldown')*60000) {
+        if(message.createdTimestamp - Data.get(`member.${id}.latest.points`) > Data.get('level.messaging.cooldown')*60000) {
             Data.set(`member.${message.member.id}.points.add`, Tools.randomRange(Data.get('level.messaging')), false)
-            Data.set(`member.${message.member.id}.latest.message`, message.createdTimestamp, false)
+            Data.set(`member.${message.member.id}.latest.points`, message.createdTimestamp, false)
         }
 
         //Messages
         Data.set(`member.${message.member.id}.messages.add`, 1, false)
 
-
         Data.save('Leveling')
-        // Data.set(`member.${message.member.id}.stats`, stats)
+    },
+    voice(oldState, newState) {
+
+        function getJoinedCount(channel) {
+            let joinedCount = 0
+            for(const member of channel.members.array()) {
+                if(member.user.bot) continue
+                if(member.voice.channel !== null && !member.voice.deaf) {
+                    joinedCount += 1
+                }
+            }
+            return joinedCount
+        }
+        function voiceJoin(channel) {
+            if(getJoinedCount(channel) > 1) {
+                for(const member of channel.members.array()) {
+                    Data.set(`member.${member.id}.latest.voice`, true, false)
+                }
+                Data.save('Leveling')
+            }
+        }
+        function voiceLeave(channel, user) {
+            if(getJoinedCount(channel) <= 1) {
+                for(const member of channel.members.array()) {
+                    Data.set(`member.${member.id}.latest.voice`, false, false)
+                }
+            }
+            Data.set(`member.${user.id}.latest.voice`, false)
+        }
+
+        if(newState.channel !== null && oldState.channel === null) { // Joining channel
+            voiceJoin(newState.channel)
+        } else if(newState.channel === null && oldState.channel !== null) { // Leaving channel
+            voiceLeave(oldState.channel, newState.member)
+        } else if(newState.channel !== null && oldState.channel !== null) {
+            if(newState.channel.id !== oldState.channel.id) {   // Switching channels
+                voiceJoin(newState.channel)
+                voiceLeave(oldState.channel, newState.member)
+            } else if(!newState.deaf && oldState.deaf) {    // Undeafening
+                voiceJoin(newState.channel)
+            } else if(newState.deaf && !oldState.deaf) {    // Deafening
+                voiceLeave(oldState.channel, newState.member)
+            }
+        }
     }
 };
 
@@ -200,6 +250,46 @@ module.exports = {
  * @param {Discord.GuildMember} member The member to show stats of
  */
 function showStat(channel, member, stat) {
+    if(stat === undefined) {
+        return channel.send({ embed: Data.replaceEmbed({
+            title: `Stats of ${Tools.getName(member)}`,
+            thumbnail: { url: Tools.getAvatar(member) },
+            fields: [{
+                    name: 'Level',
+                    value: `**{member.${member.id}.level}**`,
+                    inline: true
+                }, {
+                    name: 'Points',
+                    value: `**{member.${member.id}.points}**`,
+                    inline: true
+                }, {
+                    name: 'Messages',
+                    value: `**{member.${member.id}.messages}**`,
+                    inline: true
+                }, {
+                    name: 'Voice Chat',
+                    value: `**{member.${member.id}.voice}**`,
+                    inline: true
+                }, {
+                    name: 'Reputation',
+                    value: `**{member.${member.id}.rep}**`,
+                    inline: true
+                }, {
+                    name: 'Bumps',
+                    value: `**{member.${member.id}.bumps}**`,
+                    inline: true
+                }, {
+                    name: 'Counting',
+                    value: `**{member.${member.id}.counting}**`,
+                    inline: true
+                }, {
+                    name: 'Invites',
+                    value: `**{member.${member.id}.invite}**`,
+                    inline: true
+                }
+            ]
+        })})
+    }
     let embed = { title: '', fields: [] }
     embed.title = `${stat === 'points' ? 'Levels' :
                     stat === 'messages' ? 'Messaging Stats' :
@@ -208,7 +298,8 @@ function showStat(channel, member, stat) {
                     stat === 'bumps' ? 'Disboard Bumps' :
                     stat === 'counting' ? 'Counting Game Stats' :
                     stat === 'invite' ? 'Invite Stats' :
-                    'lol pls @ Jimps'} of ${member.displayName}`
+                    'lol pls @ Jimps'} of ${Tools.getName(member)}`
+    embed.thumbnail = { url: Tools.getAvatar(member) }
     if(stat === 'points') {
         embed.fields.push({
             name: 'Level',
@@ -284,8 +375,6 @@ function getStatName(alias) {
         return 'invite'
     }
 }
-
-
 
 /*
 

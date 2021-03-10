@@ -73,15 +73,18 @@ module.exports = {
 		if(args[0] === 'disabled') return data['Configuration'].disabled.includes(args[1])
 
 		let stats = data['Leveling'].stats[args[1]]
-		if(/^member\.(.+)\.(points|messages|voice|rep|bumps|counting|invite)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name)) {
+		if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting|invite)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name)) {
 			resetStats(args[1])
+			if(['points', 'voice'].includes(args[2])) updateVoice(args[1], undefined)
 			const stat = Tools.getSafe(stats, getDefault(args[2], args[3] ?? 'allTime'), args[3] ?? 'allTime', args[2])
-			if(args[2] === 'invite' && (args[3] === undefined || args[3] === 'allTime')) return Tools.mapObject(stat, (value) => value.length)
+			if(args[2] === 'rep' && args[3] === undefined) return stat.recieved - stat.given
+			if(args[2] === 'invite' && args[3] === undefined) return stat.joined+stat.returned-stat.left
+			if(args[2] === 'invite' && args[3] === 'allTime') return Tools.mapObject(stat, (value) => value.length)
 			return stat
 		}
-		if(/^member\.(.+)\.invite\.(joined|left|returned)$/.test(name)) return Tools.getSafe(stats, [], 'allTime', 'invite', args[3])
-		if(/^member\.(.+)\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
-		if(/^member\.(.+)\.latest\.(message|voice|rep|repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
+		if(/^member\.((?!\.).)+\.invite\.(joined|left|returned)$/.test(name)) return Tools.getSafe(stats, [], 'allTime', 'invite', args[3])
+		if(/^member\.((?!\.).)+\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
+		if(/^member\.((?!\.).)+\.latest\.(points|voice|rep|repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
 
 		if(args[0] === 'text') return data['Text'].users.includes(args[1])
         if(args[0] === 'counting') return data['Counting'].channel === args[1]
@@ -96,7 +99,7 @@ module.exports = {
 		const args = name.split('.')
 
         // Private
-		didUpdate = true;
+		let didUpdate = true;
 		switch(name) {
 			case 'status': private.status = value; break
 			default: didUpdate = false
@@ -114,29 +117,30 @@ module.exports = {
 
 		// Leveling
 		didUpdate = true;
-		let stats = data['Leveling'].stats[args[1]]
-		if(/^member\.(.+)\.(points|messages|voice|rep|bumps|counting|invite)(|\.add)$/.test(name)) {
+		let stats = data['Leveling'].stats
+		if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting|invite)(|\.add)$/.test(name)) {
 			for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual']) {
 				if(args[3] === undefined) {
-					Tools.setSafe(stats, value, category, args[2])
+					Tools.setSafe(stats, value, args[1], category, args[2])
 				} else if(args[2] === 'rep') {
 					let oldVal = this.get(`member.${args[1]}.${args[2]}.${category}`)
 					Tools.setSafe(stats, { 
 						given: oldVal.given + (value.given ?? 0), 
 						recieved: oldVal.recieved + (value.recieved ?? 0) 
-					}, category, args[2])
+					}, args[1], category, args[2])
 				} else if(args[2] === 'invite') {
 					if(category === 'allTime') {
-						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`).concat(value), category, args[2])
+						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`).concat(value), args[1], category, args[2])
 					} else {
-						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+1, category, args[2])
+						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+1, args[1], category, args[2])
 					}
-				} else {
-					Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+value, category, args[2])
+				} else if(value > 0) {
+					Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+value, args[1], category, args[2])
 				}
 			}
-		} else if(/^member\.(.+)\.latest\.(message|voice|rep|repTo|repFrom)$/.test(name)) {
-			Tools.setSafe(stats, value, 'latest', args[3])
+		} else if(/^member\.((?!\.).)+\.latest\.(points|voice|rep|repTo|repFrom)$/.test(name)) {
+			if(args[3] === 'voice') updateVoice(args[1], value)
+			else Tools.setSafe(stats, value, args[1], 'latest', args[3])
 		} else {
 			switch(name) {
 				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
@@ -208,38 +212,39 @@ function replaceStr(str) {
     str = str.replace(/{perm.(.*?)}/gi, (x) => data['Configuration'].disabled.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
     str = str.replace(/{color}/gi, data['Configuration'].color)
 
-    //Leveling
-    str = str.replace(/{member\.(.+)\.(points|messages|bumps|counting)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, 
-						(x) => module.exports.get(x.slice(1, -1)))
-	str = str.replace(/{member\.(.+)\.voice(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
+	//Voice
+	str = str.replace(/{member\.((?!\.).)+\.voice(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
 		d = module.exports.get(x.slice(1, -1))
 		return (d < 3600000 ? '' : `${Tools.getHour(d)}h `) + `${Tools.getMinute(d)}m`
 	})
 	//Rep
-	str = str.replace(/{member\.(.+)\.latest\.(repTo|repFrom)}/gi, (x) => {
+	str = str.replace(/{member\.((?!\.).)+\.latest\.(repTo|repFrom)}/gi, (x) => {
 		person = module.exports.get(x.slice(1, -1))
 		if(person === 0) return 'nobody ;-;'
 		return `<@!${person}>`
 	})
-	str = str.replace(/{member\.(.+)\.rep(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
+	str = str.replace(/{member\.((?!\.).)+\.rep\.(allTime|daily|weekly|monthly|annual)}/gi, (x) => {
 		rep = module.exports.get(x.slice(1, -1))
-		if(args[3] === undefined) return rep.recieved - rep.given
+		if(typeof rep !== 'object') return rep
 		return `${rep.recieved} recieved\n${rep.given} given`
 	})
 	//Invite
-	str = str.replace(/{member\.(.+)\.invite(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
+	str = str.replace(/{member\.((?!\.).)+\.invite\.(allTime|daily|weekly|monthly|annual)}/gi, (x) => {
 		invite = module.exports.get(x.slice(1, -1))
 		return `${invite.joined+invite.returned-invite.left}
 				${invite.joined} joined
 				${invite.left} left
 				${invite.returned} returned`
 	})
-	str = str.replace(/{member\.(.+)\.invite\.(joined|left|returned)(|\..+)}/gi, (x) => {
+	str = str.replace(/{member\.((?!\.).)+\.invite\.(joined|left|returned)(|\..+)}/gi, (x) => {
 		people = module.exports.get(x.slice(1, args[4] === undefined ? -1 : -args[4].length-2))
 		if(people.length === 0) return 'nobody here...'
 		return `<!@${people.slice(`-${args[4]}`).join('> <!@')}>`
 	})
-    str = str.replace(/{member\.(.+)\.level}/gi, (x) => module.exports.get(x.slice(1, -1)))
+    //Leveling
+    str = str.replace(/{member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting|invite)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, 
+						(x) => module.exports.get(x.slice(1, -1)))
+    str = str.replace(/{member\.((?!\.).)+\.level}/gi, (x) => module.exports.get(x.slice(1, -1)))
 	str = str.replace(/{level\.(messaging|voice|bump|counting|invite)}/gi, (x) => {
 		let points = module.exports.get(x.slice(1, -1))
 		if(points.min == points.max) return `${points.max} point${points.max == 1 ? '' : 's'}`
@@ -281,6 +286,45 @@ function getDefault(stat, category = 'not allTime') {
 	if(stat === 'invite' && category === 'allTime') return { joined: [], left: [], returned: [] }
 	if(stat === 'invite') return { joined: 0, left: 0, returned: 0 }
 	return 0
+}
+
+
+function updateVoice(member, isRecording) {
+
+	function date(timestamp) {
+		date = new Date(timestamp)
+		return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
+	}
+
+	let latest = Tools.getSafe(data['Leveling'].stats, 0, member, 'latest', 'voice')
+	let now = Date.now()
+	if(Math.abs(now - latest) < 10) return
+	if(isRecording === undefined) isRecording = latest > 0
+
+	if(latest <= 0 && isRecording) {	// Starting recording
+		// console.log(`started recording at ${date(now)}`)
+		module.exports.set(`member.${member}.latest.points`, now + latest, false)
+		Tools.setSafe(data['Leveling'].stats, now, member, 'latest', 'voice') 
+	} else if(latest > 0) {
+		let time = Tools.getSafe(data['Leveling'].stats, 0, member, 'latest', 'points')
+		let cooldown = Math.max(1, data['Leveling'].config.voice.cooldown)*60000
+		let pointsGain = 0
+		for(; time < now - cooldown; time += cooldown) {
+			// console.log(`collecting points: ${pointsGain} (${time} ${now - cooldown})`)
+			pointsGain += Tools.randomRange(data['Leveling'].config.voice.points)
+		}
+		if(!isRecording) {	// Stop recording
+			// console.log(`stopped recording at ${date(now)}`)
+			Tools.setSafe(data['Leveling'].stats, time - now, member, 'latest', 'voice') 
+		} else {	// Continue recording
+			// console.log(`updated recording at ${date(now)}`)
+			Tools.setSafe(data['Leveling'].stats, now, member, 'latest', 'voice') 
+		}
+		// console.log(`updating data... ${now} ${latest}`)
+		module.exports.set(`member.${member}.latest.points`, time, false)
+		module.exports.set(`member.${member}.voice.add`, now - latest, false)
+		module.exports.set(`member.${member}.points.add`, pointsGain, false)
+	}
 }
 
 

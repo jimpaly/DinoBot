@@ -33,41 +33,5 @@
         }
     },
     "profiles": {},
-    "stats": {
-        "272838516348682240": {
-            "lastUpdate": 1615321330533,
-            "latest": {
-                "message": 1615321330549
-            },
-            "allTime": {
-                "messages": 23,
-                "points": 200
-            },
-            "daily": {
-                "messages": 23,
-                "points": 200
-            },
-            "weekly": {
-                "messages": 23,
-                "points": 200
-            },
-            "monthly": {
-                "messages": 23,
-                "points": 200
-            },
-            "annual": {
-                "messages": 23,
-                "points": 200
-            }
-        },
-        "709875109174706236": {
-            "lastUpdate": 1615321246063
-        },
-        "155149108183695360": {
-            "lastUpdate": 1615321320830
-        },
-        "204255221017214977": {
-            "lastUpdate": 1615321325315
-        }
-    }
+    "stats": {}
 }

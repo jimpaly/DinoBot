@@ -26,12 +26,13 @@ client.once('ready', () => {
 // When a message is sent...
 client.on('message', message => {
 
-	if(message.channel.type === 'text') Commands.call('level', message)
-
 	// Initial checks
-	if(message.author.id === client.user.id) return
 	if(Data.get(`disabled.${message.channel.id}`)) return
 	message.content = message.content.trim()
+	
+	if(message.channel.type === 'text') Commands.call('level', message)
+
+	if(message.author.id === client.user.id) return
 
 	// Check if it's a command or not
 	if(message.content.startsWith(Data.get('prefix'))) {
@@ -57,4 +58,8 @@ client.on('messageDeleteBulk', messages => {
 	for(const message of messages.array()) {
 		if(Data.get(`counting.${message.channel.id}`)) Commands.call('uncount', message)
 	}
+})
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+	Commands.call('voice', [oldState, newState])
 })
