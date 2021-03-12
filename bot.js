@@ -10,25 +10,39 @@
 const Discord = require('discord.js')
 const Data = require('./data')
 const Commands = require('./commands')
+const Tools = require('./tools')
+const invitesCache = {}
 
-// Start Discord client
-const client = new Discord.Client({ partials: ['MESSAGE', 'REACTION'] })
+// Start Discord client  partials: ['MESSAGE', 'REACTION'] 
+const intents = ['GUILDS', 'GUILD_MESSAGES', 'GUILD_VOICE_STATES', 'GUILD_INVITES', 'GUILD_MEMBERS']
+const partials = ['MESSAGE', 'GUILD_MEMBER'] 
+const client = new Discord.Client({ ws: { intents: intents }, partials: partials })
 client.login(Data.get('token'))
 
 
 // When the bot starts...
-client.once('ready', () => {
+client.on('ready', () => {
 	client.user.setActivity(Data.get('status'), Data.get('statusMode'))
+	client.guilds.cache.forEach(guild => {
+		Tools.getInvites(guild).then(invites => invitesCache[guild.id] = invites)
+	});
 	console.log(`DinoBot logged in as @${client.user.tag} at ${Date()}`)
 });
 
 
 // When a message is sent...
-client.on('message', message => {
+client.on('message', async message => {
 
 	// Initial checks
+	if(message.type !== 'DEFAULT') return
+	if(message.webhookID !== null) return
 	if(Data.get(`disabled.${message.channel.id}`)) return
 	message.content = message.content.trim()
+
+	if(message.channel.type === 'text' && Data.get(`member.${message.member.id}.joinDate`) == 0) {
+        Data.set(`member.${message.member.id}.join`)
+	}
+
 	
 	if(message.channel.type === 'text') Commands.call('level', message)
 
@@ -62,4 +76,22 @@ client.on('messageDeleteBulk', messages => {
 
 client.on('voiceStateUpdate', (oldState, newState) => {
 	Commands.call('voice', [oldState, newState])
+})
+
+client.on('inviteCreate', (invite) => {
+	Tools.getInvites(invite.guild).then(invites => invitesCache[invite.guild.id] = invites)
+})
+
+client.on('guildMemberAdd', async (member) => {
+	const newInvites = await Tools.getInvites(member.guild)
+	for(const inviter in newInvites) {
+		if(newInvites[inviter] > invitesCache[member.guild.id][inviter]) {
+			Commands.call('memberAdd', [member, inviter])
+			return invitesCache[member.guild.id] = newInvites
+		}
+	}
+	Commands.call('memberAdd', [member])
+})
+client.on('guildMemberRemove', (member) => {
+	Commands.call('memberRemove', member)
 })

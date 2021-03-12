@@ -1,4 +1,3 @@
-const fs = require('fs')
 const Tools = require('./tools')
 const Data = require('./data')
 
@@ -8,6 +7,8 @@ module.exports = {
         switch(name) {
             case 'level': return commands['Leveling'].level(data)
             case 'voice': return commands['Leveling'].voice(data[0], data[1])
+            case 'memberAdd': return commands['Profiles'].addMember(data[0], data[1])
+            case 'memberRemove': return commands['Profiles'].removeMember(data)
             case 'count': return commands['Fun'].count(data)
             case 'uncount': return commands['Fun'].uncount(data)
             case 'react': return commands['Fun'].react(data)
@@ -74,7 +75,7 @@ module.exports = {
 
 // Load commands
 const commands = {}
-for (const file of ['utility', 'levels', 'fun']) {
+for (const file of ['utility', 'profiles', 'levels', 'fun']) {
 	const command = require(`./commands/${file}`)
 	commands[command.name] = command
 }

@@ -1,28 +1,11 @@
 const Tools = require('../tools')
 const Data = require('../data');
-const { isNumber } = require('../tools');
 
 module.exports = {
 	name: 'Leveling',
-	description: 'Create a profile, gain points, raise your level, and have fun!',
+	description: 'Get active, gain points, raise your level, and have fun!',
 	commands: [
 		{
-			name: 'Profile',
-			alias: ['profile', 'p', 'pf', 'user', 'player'],
-			description: `Show your profile card and update your info!`,
-			usage: [
-				['profile', `Display your own profile card`],
-				['profile (member) <member>', `Show someone's profile card`],
-                ['profile set <component> <value>', 'Customize your profile card (refer to below command for more)'],
-                ['profile components|set', 'Get to know the components more!']
-			],
-			public: true,
-			developer: false,
-			guildOnly: false,
-			execute(message, args) {
-                message.channel.send('bloop')
-			}
-		}, {
 			name: 'Stats',
 			alias: ['stats', 'stat', 'detail', 'details'],
 			description: `Show the detailed leveling stats of someone
@@ -71,6 +54,13 @@ module.exports = {
 			execute(message, args) {
 				if(args.length === 0) {
                     showStat(message.channel, message.member, 'points')
+                } else if(['leaderboard', 'lb', 'all'].includes(args[0])) {
+
+                } else {
+                    Tools.findMember(message, args[0]).then((member) => {
+                        if(member !== undefined) showStat(message.channel, member, stat)
+                        else Tools.fault(message.channel, `I can't seem to find a person named ${args[0]}!`)
+                    });
                 }
 			}
 		}, {
@@ -127,9 +117,9 @@ module.exports = {
                 ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
                 ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
                 ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc'],
-                ['levelConfig bump [min points] [max points]', 'Set points gained by bumping with Disboard'],
-                ['levelConfig counting [min points] [max points]', 'Set points gained for each counting in {counting}'],
-                ['levelConfig invite [min points] [max points]', 'Set points gained for inviting someone']
+                ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
+                ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
+                ['levelConfig invite [points]', 'Set points gained for inviting someone']
             ],
             public: false,
             developer: false,
@@ -156,16 +146,13 @@ module.exports = {
                     if(Tools.isNumber(args[3])) Data.set('level.voice.cooldown', parseInt(args[3]))
                     message.channel.send(Data.replace('Voice settings set to: {level.voice}, {level.voice.cooldown}'))
                 } else if(['bump', 'bumping', 'disboard'].includes(args[0])) {
-                    if(Tools.isNumber(args[1])) Data.set('level.bump', { min: parseInt(args[1]) })
-                    if(Tools.isNumber(args[2])) Data.set('level.bump', { max: parseInt(args[2]) })
+                    if(Tools.isNumber(args[1])) Data.set('level.bump', parseInt(args[1]))
                     message.channel.send(Data.replace('Bump settings set to: {level.bump}'))
                 } else if(['counting', 'count', 'cnt'].includes(args[0])) {
-                    if(Tools.isNumber(args[1])) Data.set('level.counting', { min: parseInt(args[1]) })
-                    if(Tools.isNumber(args[2])) Data.set('level.counting', { max: parseInt(args[2]) })
+                    if(Tools.isNumber(args[1])) Data.set('level.counting', parseInt(args[1]))
                     message.channel.send(Data.replace('Counting settings set to: {level.counting}'))
                 } else if(['invite', 'inviting', 'inv'].includes(args[0])) {
-                    if(Tools.isNumber(args[1])) Data.set('level.invite', { min: parseInt(args[1]) })
-                    if(Tools.isNumber(args[2])) Data.set('level.invite', { max: parseInt(args[2]) })
+                    if(Tools.isNumber(args[1])) Data.set('level.invite', parseInt(args[1]))
                     message.channel.send(Data.replace('Invite settings set to: {level.invite}'))
                 } else {
                     message.channel.send('blop')
@@ -241,6 +228,12 @@ module.exports = {
                 voiceLeave(oldState.channel, newState.member)
             }
         }
+    },
+    addInvite(member, inviter) {
+
+    },
+    removeInvite(member, inviter) {
+
     }
 };
 
@@ -349,7 +342,7 @@ function showStat(channel, member, stat) {
     if(stat === 'invite') {
         embed.fields.push({
             name: 'Recent Invites',
-            value: `{member.${member.id}.invite.joined}`
+            value: `{member.${member.id}.invite.joined.10}`
         })
     }
     channel.send({embed: Data.replaceEmbed(embed)})
@@ -378,71 +371,75 @@ function getStatName(alias) {
 
 /*
 
-
-    "profiles": {
-        "template": {
-            "bio": "",
-            "background": ""
-        }
+"template": {
+    "lastUpdate": 0,
+    "latest": {
+        "points": 0,
+        "voice": 0
     },
-    "invites": {
-        "template": {
-            "joined": {
-                "first": 0,
-                "firstInvite": "",
-                "last": 0,
-                "lastInvite": ""
-            },
-            "invites": []
-        }
+    "allTime": {
+        "points": 0,
+        "rep": {
+            "given": 0,
+            "recieved": 0
+        },
+        "messages": 0,
+        "voice": 0,
+        "bumps": 0,
+        "counting": 0,
+        "invite": []
     },
-
-    "template": {
-      "messageCooldown": 0,
-      "voiceCooldown": 0,
-      "allTime": {
+    "daily": {
         "points": 0,
-        "rep": 0,
-        "messages": 0,
-        "voice": 0,
-        "bumps": 0,
-        "counting": 0
-      },
-      "daily": {
-        "points": 0,
-        "rep": 0,
+        "rep": {
+            "given": 0,
+            "recieved": 0
+        },
         "money": 0,
         "messages": 0,
         "voice": 0,
         "bumps": 0,
-        "counting": 0
-      },
-      "weekly": {
-        "points": 0,
-        "rep": 0,
-        "money": 0,
-        "messages": 0,
-        "voice": 0,
-        "bumps": 0,
-        "counting": 0
-      },
-      "monthly": {
-        "points": 0,
-        "rep": 0,
-        "money": 0,
-        "messages": 0,
-        "voice": 0,
-        "bumps": 0,
-        "counting": 0
-      },
-      "annual": {
-        "points": 0,
-        "rep": 0,
-        "money": 0,
-        "messages": 0,
-        "voice": 0,
-        "bumps": 0,
-        "counting": 0
-      }
+        "counting": 0,
+        "invite": 0
     },
+    "weekly": {
+        "points": 0,
+        "rep": {
+            "given": 0,
+            "recieved": 0
+        },
+        "money": 0,
+        "messages": 0,
+        "voice": 0,
+        "bumps": 0,
+        "counting": 0,
+        "invite": 0
+    },
+    "monthly": {
+        "points": 0,
+        "rep": {
+            "given": 0,
+            "recieved": 0
+        },
+        "money": 0,
+        "messages": 0,
+        "voice": 0,
+        "bumps": 0,
+        "counting": 0,
+        "invite": 0
+    },
+    "annual": {
+        "points": 0,
+        "rep": {
+            "given": 0,
+            "recieved": 0
+        },
+        "money": 0,
+        "messages": 0,
+        "voice": 0,
+        "bumps": 0,
+        "counting": 0,
+        "invite": 0
+    }
+}
 */

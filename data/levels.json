@@ -19,19 +19,9 @@
             },
             "cooldown": 0
         },
-        "bump": {
-            "min": 0,
-            "max": 0
-        },
-        "counting": {
-            "min": 0,
-            "max": 0
-        },
-        "invite": {
-            "min": 0,
-            "max": 0
-        }
+        "bump": 50,
+        "counting": 50,
+        "invite": 50
     },
-    "profiles": {},
     "stats": {}
 }

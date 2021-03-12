@@ -1,0 +1,6 @@
+{
+    "name": "Profiles",
+    "description": "Storing people's profiles as well as some important data",
+    "file": "profiles.json",
+    "profiles": {}
+}

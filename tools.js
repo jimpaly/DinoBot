@@ -91,6 +91,15 @@ module.exports = {
 		members = await message.guild.members.fetch({ query: arg, limit: 1 })
 		if(members.first() !== undefined) return members.first()
 	},
+	async getInvites(guild) {
+		let invites = {}
+		let inv = await guild.fetchInvites()
+	  	inv.forEach(invite => {
+			if(invites[invite.inviter.id] === undefined) invites[invite.inviter.id] = 0
+			invites[invite.inviter.id] += invite.uses
+		})
+		return invites
+	},
 	getAuthor(message) {
 		return message.member ?? message.author
 	},
@@ -144,6 +153,9 @@ module.exports = {
 			return newObject
 		}
 	},
+	/**
+	 * Copy object into old object but keep existing properties
+	 */
 	copy(oldObj, newObj) {
 		if(newObj === undefined) return this.clone(oldObj)
 		if(oldObj === undefined) return this.clone(newObj)
@@ -166,6 +178,9 @@ module.exports = {
 			return newObject
 		}
 	},
+	/**
+	 * Similar to copy() but doesn't make clones
+	 */
 	paste(oldObj, newObj) {
 		if(newObj === undefined) return oldObj
 		if(oldObj === undefined) return newObj
@@ -176,14 +191,14 @@ module.exports = {
 			} else {
 				let newObject = oldObj
 				for(const element in newObj) {
-					newObject[element] = this.copy(oldObj[element], newObj[element])
+					newObject[element] = this.paste(oldObj[element], newObj[element])
 				}
 				return newObject
 			}
 		} else {
 			let newObject = oldObj
 			for(const property in newObj) {
-				newObject[property] = this.copy(oldObj[property], newObj[property])
+				newObject[property] = this.paste(oldObj[property], newObj[property])
 			}
 			return newObject
 		}
@@ -197,7 +212,7 @@ module.exports = {
 
 	getSafe(object, defaultVal, ...properties) {
 		if(object === undefined) return defaultVal
-		if(properties.length == 0) return object
+		if(properties.length == 0) return this.copy(defaultVal, object)
 		return this.getSafe(object[properties[0]], defaultVal, ...properties.slice(1))
 	},
 	setSafe(object, value, ...properties) {
