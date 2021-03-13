@@ -32,15 +32,15 @@ module.exports = {
 
 
 	pageList(message, page, count = 10, list, content = {}) {
+
 		if(page == -1 && list.length > count) {
-			return message.react('⏮')
+			message.react('⏮')
 			.then(() => message.react('◀️')
 			.then(() => message.react('▶️')
-			.then(() => message.react('⏭')
-			.then(() => pageList(message, 1, count, list, content)))))
+			.then(() => message.react('⏭'))))
 		}
-		page = Math.max(1, Math.min(Math.ceil(list.length/count), page))
 
+		page = Math.max(1, Math.min(Math.ceil(list.length/count), page))
 		embed = this.clone(content)
 		if(list.length > count) embed.footer = { text: `page ${page}/${Math.ceil(list.length/count)}` }
 		embed.description = `${content.description ?? ''}
@@ -52,12 +52,12 @@ module.exports = {
 			if(user.id === message.client.user.id) return false
 			reaction.users.remove(user)
 			return ['⏮', '◀️', '▶️', '⏭'].includes(reaction.emoji.name)
-		}, { max: 1, time: 20000, errors: ['time'] }).then(reactions => {
+		}, { max: 1, time: 20000}).then(reactions => {
 			switch(reactions.first().emoji.name) {
-				case '⏮': this.pageList(message, 1, count, list, content)
-				case '⏭': this.pageList(message, list.length, count, list, content)
-				case '◀️': this.pageList(message, page-1, count, list, content)
-				case '▶️': this.pageList(message, page+1, count, list, content)
+				case '⏮': return this.pageList(message, 1, count, list, content)
+				case '⏭': return this.pageList(message, list.length, count, list, content)
+				case '◀️': return this.pageList(message, page-1, count, list, content)
+				case '▶️': return this.pageList(message, page+1, count, list, content)
 			}
 		}).catch(() => message.reactions.removeAll())
 	},
@@ -315,16 +315,16 @@ module.exports = {
 		if(day < weekday) day += 7
 		date.setHours(-24 * (day - weekday))
 	},
-	durationToStr(duration, start = -1, end = -1) { // 0: second, 1: minute, 2: hour, 3: day
-		if(start == -1 || end == -1) {
-			if(this.getDay(duration, true) > 0) {
-				start = 2; end = 3
-			} else if(this.getHour(duration, true) > 0) {
-				start = 1; end = 2
+	durationToStr(duration, start = 1, end = 3, dynamic = true) { // 0: second, 1: minute, 2: hour, 3: day
+		if(dynamic) {
+			if(end >= 3 && this.getDay(duration, true) > 0) {
+				start = Math.max(start, 2); end = 3
+			} else if(end >= 2 && this.getHour(duration, true) > 0) {
+				start = Math.max(start, 1); end = 2
 			} else if(this.getMinute(duration, true) > 0) {
-				start = 0; end = 1
+				start = Math.max(start, 0); end = 1
 			} else {
-				start = 0; end = 0
+				start = Math.max(start, 0); end = Math.max(start, 0)
 			}
 		}
 		let str = ''
@@ -352,7 +352,7 @@ module.exports = {
 		return Math.floor((duration / 1000) % 60)
 	},
 
-	normalizeSpacing(str, length, alignment = 'center') {
+	align(str, length, alignment = 'center') {
 		const leftover = Math.max(0, length - str.length)
 		if(alignment  === 'left') {
 			return str + Array(leftover).fill(' ').join('')

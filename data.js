@@ -80,7 +80,7 @@ module.exports = {
 			if(['points', 'voice'].includes(args[2])) updateVoice(args[1], undefined)
 			const stat = Tools.getSafe(stats, getDefault(args[2], args[3] ?? 'allTime'), args[3] ?? 'allTime', args[2])
 			if(args[2] === 'rep' && args[3] === undefined) return stat.recieved - stat.given
-			if(args[2] === 'invite' && args[3] === undefined) return stat.joined+stat.returned-stat.left
+			if(args[2] === 'invite' && args[3] === undefined) return stat.joined.length-stat.left.length
 			if(args[2] === 'invite' && args[3] === 'allTime') return Tools.mapObject(stat, (value) => value.length)
 			return stat
 		}
@@ -161,7 +161,7 @@ module.exports = {
 							given: oldVal.given + (value.given ?? 0), 
 							recieved: oldVal.recieved + (value.recieved ?? 0) 
 						}, args[1], category, args[2])
-					} else if(value > 0) {
+					} else {
 						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+value, args[1], category, args[2])
 					}
 				} else {
@@ -245,7 +245,7 @@ function replaceStr(str) {
 
     if(str === undefined) return;
 
-    str = str.replace(/\t/gi, '')
+    //str = str.replace(/\t/gi, '')
 
     // Configuration (prefix)
     const c = data['Configuration'].prefix.substr(-1)
@@ -259,8 +259,7 @@ function replaceStr(str) {
 
 	//Voice
 	str = str.replace(/{member\.((?!\.).)+\.voice(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
-		d = module.exports.get(x.slice(1, -1))
-		return (d < 3600000 ? '' : `${Tools.getHour(d)}h `) + `${Tools.getMinute(d)}m`
+		return Tools.durationToStr(module.exports.get(x.slice(1, -1)), 1, 2)
 	})
 	//Rep
 	str = str.replace(/{member\.((?!\.).)+\.latest\.(repTo|repFrom)}/gi, (x) => {

@@ -9,7 +9,7 @@ module.exports = {
 			name: 'Stats',
 			alias: ['stats', 'stat', 'detail', 'details'],
 			description: `Show the detailed leveling stats of someone
-                            Categories include: \`level\`, \`messages\`, \`voice\`, \`rep\`, \`bumps\`, \`counting\`, and \`invite\``,
+                        Categories include: \`level\`, \`messages\`, \`voice\`, \`rep\`, \`bumps\`, \`counting\`, and \`invite\``,
 			usage: [
 				['stats', `Show a summary of your stats`],
 				['stats <member>', `Show a summary of someone else's stats`],
@@ -92,7 +92,7 @@ module.exports = {
             guildOnly: false,
             execute(message, args) {
                 if(args.length == 0) return listInviteLinks(message.channel, message.member)
-                const category = getInviteCategoryName(args[0])
+                const category = getInviteCategoryName(args[0].toLowerCase())
                 if(category === undefined) {
                     Tools.findMember(message, args[0]).then((member) => {
                         if(member !== undefined) listInviteLinks(message.channel, member)
@@ -110,21 +110,28 @@ module.exports = {
         }, {
             name: 'Leaderboard',
             alias: ['leaderboard', 'lb', 'rank', 'ranks', 'ranking'],
-            description: `List everybody's levels`,
+            description: `List everybody's levels
+                    Categories include: \`level\`, \`messages\`, \`voice\`, \`rep\`, \`bumps\`, \`counting\`, and \`invite\`
+                    Time periods include: \`allTime\` \`daily\`, \`weekly\`, \`monthly\`, and \`annual\``,
             usage: [
-                ['leaderboard (level|points|score)', `Show top members in leveling`],
-                ['leaderboard rep|reputation', 'Show top members in reputation points']
-                ['leaderboard messages|texting', `Show top members in message count`],
-                ['leaderboard voice|talking', 'Show top members in time in voice chats'],
-                ['leaderboard bumps', 'Show top members in Disboard bumps made'],
-                ['leaderboard counting', 'Show top members in numbers counted in {counting}'],
-                ['leaderboard invites', 'Show top members in people invited'],
+                ['leaderboard <category>', `Show top members in a certain category (See above description)`],
+                ['leaderboard <category> <time period>', `Show resetting leaderboards for a certain time period (See above description)`],
             ],
             public: true,
             developer: false,
             guildOnly: false,
             execute(message, args) {
-                message.channel.send('bloop')
+                
+                let stat, time, option
+                for(const arg of args) {
+                    stat = stat ?? getStatName(arg.toLowerCase())
+                    time = time ?? getTimePeriodName(arg.toLowerCase())
+                    if(stat === 'invite') option = option ?? getInviteCategoryName(arg.toLowerCase())
+                    else if(stat === 'rep') option = option ?? getRepCategoryName(arg.toLowerCase())
+                }
+                stat = stat ?? 'points'
+                time = time ?? 'monthly'
+                showLeaderboard(message.channel, message.member, stat, time, option)
             }
         }, {
             name: 'Daily',
@@ -308,16 +315,13 @@ function showStat(channel, member, stat) {
             ]
         })})
     }
-    let embed = { title: '', fields: [] }
-    embed.title = `${stat === 'points' ? 'Levels' :
-                    stat === 'messages' ? 'Messaging Stats' :
-                    stat === 'voice' ? 'Voice Chat Stats' : 
-                    stat === 'rep' ? 'Reputation' :
-                    stat === 'bumps' ? 'Disboard Bumps' :
-                    stat === 'counting' ? 'Counting Game Stats' :
-                    stat === 'invite' ? 'Invite Stats' :
-                    'lol pls @ Jimps'} of ${Tools.getName(member)}`
-    embed.thumbnail = { url: Tools.getAvatar(member) }
+    let embed = { 
+        title: (['Levels', 'Messaging Stats', 'Voice Chat Stats', 'Reputation', 'Disboard Bumps', 'Counting Game Stats', 
+            'Invite Stats'][['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? '') +
+            ` of ${Tools.getName(member)}`, 
+        thumbnail: { url: Tools.getAvatar(member) },
+        fields: []
+    }
     if(stat === 'points') {
         embed.fields.push({
             name: 'Level',
@@ -372,9 +376,59 @@ function showStat(channel, member, stat) {
     }
     channel.send({embed: Data.replaceEmbed(embed)})
 }
-function showLeaderboard(channel, member, stat) {
-
+async function showLeaderboard(channel, member, stat, time, option) {
+    const message = await channel.send('Loading leaderboard...')
+    let memberPlace = {}
+    let leaderboard = Data.get('level.members').map((otherMember) => {
+        let otherStat = Data.get(`member.${otherMember}.${stat}.${time}`)
+        if(stat === 'rep') {
+            if(option === 'given') otherStat = otherStat.given
+            else if(option === 'recieved') otherStat = otherStat.recieved
+            else otherStat = otherStat.recieved - otherStat.given
+        } else if(stat === 'invite') {
+            if(option === 'current') otherStat = otherStat.joined - otherStat.left
+            else if(option === 'stayed') otherStat = otherStat.joined - otherStat.left - otherStat.returned
+            else otherStat = otherStat.joined
+        }
+        return {
+            member: otherMember,
+            stat: otherStat
+        }
+    }).sort((a, b) => b.stat - a.stat).map((memberStat, index) => {
+        let statStr = memberStat.stat+''
+        if(stat === 'voice') statStr = Tools.durationToStr(memberStat.stat, 1, 2)
+        let ret = `${index+1}. <@!${memberStat.member}> - ${statStr} `
+        ret += [`points - lvl ${Data.get(`member.${memberStat.member}.level`)}`, 'messages', '', 
+            option === undefined ? '' : option, 'bumps', 'counts', 'members']
+            [['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? ''
+        if(memberStat.member === member.id) {
+            memberPlace = ret
+            return `**${ret}**`
+        } 
+        return ret
+    })
+    let embed = {
+        title: (['Daily', 'Weekly', 'Monthly', 'Annual'][['daily', 'weekly', 'monthly', 'annual'].indexOf(time)] ?? '') + 
+                ' ' + (['Leveling', 'Messaging', 'Voice Chat', 'Reputation', 'Disboard Bumping', 'Counting Game', 'Invite']
+                [['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? '') +
+                ' Leaderboard',
+        description: `${stat === 'rep' ? 
+                option === 'given' ? 'Now viewing the amount of given reps' :
+                option === 'recieved' ? 'Now viewing the amount of recieved reps' :
+                `Hint: to view the given and recieved reps individually, 
+                try \`{prefix}leaderboard rep given|recieved ${time}\`` :
+            stat === 'invite' ?
+                option === 'current' ? `Now only counting invites currently in the server` :
+                option === 'stayed' ? 'Now only counting invites who never left' :
+                `Hint: to not count invites who aren't in the server, 
+                try \`{prefix}leaderboard invite current|stayed ${time}\`` : ''}
+            **${memberPlace}**
+            ——————————`,
+        timestamp: Date.now()
+    }
+    Tools.pageList(message, -1, 10, leaderboard, embed)
 }
+
 async function listInvites(channel, member, category) {
     let message = await channel.send('Loading people...')
     let invites = Data.get(`member.${member.id}.invite.joined`)
@@ -388,14 +442,15 @@ async function listInvites(channel, member, category) {
         thumbnail: { url: Tools.getAvatar(member) }
     })
 }
+//TODO: add channel
 async function listInviteLinks(channel, member) {
     let message = await channel.send('Loading invites...')
     let invites = await Tools.getInviteLinks(member)
     Tools.pageList(message, -1, 10, invites.map((invite) => {
-        let str = `\`${Tools.normalizeSpacing(invite.code, 8, 'left')}\``
+        let str = `\`${Tools.align(invite.code, 8, 'left')}\``
         str += `([link](https://discord.gg/${invite.code}))`
-        str += ` | uses: \`${Tools.normalizeSpacing(`${invite.uses}/${invite.max || '∞'}`, 4, 'left')}\``
-        str += ` | expires: \`${Tools.normalizeSpacing(invite.expire ? Tools.durationToStr(invite.expire - Date.now()) : 'never', 6, 'left')}\``
+        str += ` | uses: \`${Tools.align(`${invite.uses}/${invite.max || '∞'}`, 4, 'left')}\``
+        str += ` | expires: \`${Tools.align(invite.expire ? Tools.durationToStr(invite.expire - Date.now()) : 'never', 6, 'left')}\``
         return str
     }), { 
         title: `Invite links of ${Tools.getName(member)}`,
@@ -413,12 +468,23 @@ function getStatName(alias) {
     if(['counting', 'count', 'cnt', 'counts'].includes(alias)) return 'counting'
     if(['invite', 'invites'].includes(alias)) return 'invite'
 }
+function getTimePeriodName(alias) {
+    if(['alltime', 'all'].includes(alias)) return 'allTime'
+    if(['daily', 'today', 'day'].includes(alias)) return 'daily'
+    if(['weekly', 'week'].includes(alias)) return 'weekly'
+    if(['monthly', 'month'].includes(alias)) return 'monthly'
+    if(['annual', 'annually', 'year', 'yearly'].includes(alias)) return 'annual'
+}
 function getInviteCategoryName(alias) {
-    if(['joined', 'list', 'lst', 'all'].includes(alias)) return 'joined'
+    if(['joined', 'list', 'lst'].includes(alias)) return 'joined'
     if(['current', 'now', 'here', 'present'].includes(alias)) return 'current'
     if(['stayed', 'stay', 'staying'].includes(alias)) return 'stayed'
     // if(['left', 'leave', 'kicked', 'banned'].includes(alias)) return 'left'
     // if(['returned', 'return'].includes(alias)) return 'returned'
+}
+function getRepCategoryName(alias) {
+    if(['given', 'gave', 'give', 'gived'].includes(alias)) return 'given'
+    if(['recieved', 'recieve', 'take', 'got', 'get', 'earn', 'earned'].includes(alias)) return 'recieved'
 }
 
 /*

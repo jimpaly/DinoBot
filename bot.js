@@ -14,7 +14,7 @@ const Tools = require('./tools')
 const invitesCache = {}
 
 // Start Discord client  partials: ['MESSAGE', 'REACTION'] 
-const intents = ['GUILDS', 'GUILD_MESSAGES', 'DIRECT_MESSAGES', 'GUILD_VOICE_STATES', 'GUILD_INVITES', 'GUILD_MEMBERS']
+const intents = ['GUILDS', 'GUILD_MESSAGES', 'DIRECT_MESSAGES', 'GUILD_MESSAGE_REACTIONS', 'DIRECT_MESSAGE_REACTIONS', 'GUILD_VOICE_STATES', 'GUILD_INVITES', 'GUILD_MEMBERS']
 const partials = ['MESSAGE', 'GUILD_MEMBER'] 
 const client = new Discord.Client({ ws: { intents: intents }, partials: partials })
 client.login(Data.get('token'))
