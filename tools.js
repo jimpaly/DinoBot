@@ -30,7 +30,38 @@ module.exports = {
         console.error(err)
     },
 
-	
+
+	pageList(message, page, count = 10, list, content = {}) {
+		if(page == -1 && list.length > count) {
+			return message.react('⏮')
+			.then(() => message.react('◀️')
+			.then(() => message.react('▶️')
+			.then(() => message.react('⏭')
+			.then(() => pageList(message, 1, count, list, content)))))
+		}
+		page = Math.max(1, Math.min(Math.ceil(list.length/count), page))
+
+		embed = this.clone(content)
+		if(list.length > count) embed.footer = { text: `page ${page}/${Math.ceil(list.length/count)}` }
+		embed.description = `${content.description ?? ''}
+							${list.slice((page-1)*count, page*count).join('\n')}`
+		message.edit('', {embed: Data.replaceEmbed(embed)})
+		if(list.length <= count) return
+
+		message.awaitReactions((reaction, user) => {
+			if(user.id === message.client.user.id) return false
+			reaction.users.remove(user)
+			return ['⏮', '◀️', '▶️', '⏭'].includes(reaction.emoji.name)
+		}, { max: 1, time: 20000, errors: ['time'] }).then(reactions => {
+			switch(reactions.first().emoji.name) {
+				case '⏮': this.pageList(message, 1, count, list, content)
+				case '⏭': this.pageList(message, list.length, count, list, content)
+				case '◀️': this.pageList(message, page-1, count, list, content)
+				case '▶️': this.pageList(message, page+1, count, list, content)
+			}
+		}).catch(() => message.reactions.removeAll())
+	},
+		
 	createColorImage(color, width, height) {
 
 		const canvas = Canvas.createCanvas(width, height)
@@ -98,6 +129,35 @@ module.exports = {
 			if(invites[invite.inviter.id] === undefined) invites[invite.inviter.id] = 0
 			invites[invite.inviter.id] += invite.uses
 		})
+		return invites
+	},
+	async getInviteLinks(member) {
+		let invites = []
+		if(member.guild) {
+			let inv = await member.guild.fetchInvites()
+			inv.forEach(invite => {
+				if(invite.inviter.id !== member.id) return
+				invites.push({
+					code: invite.code,
+					uses: invite.uses,
+					max: invite.maxUses,
+					expire: invite.expiresTimestamp
+				})
+			})
+		} else {
+			client.guilds.cache.forEach(async guild => {
+				let inv = await guild.fetchInvites()
+				inv.forEach(invite => {
+					if(invite.inviter.id !== member.id) return
+					invites.push({
+						code: invite.code,
+						uses: invite.uses,
+						max: invite.maxUses,
+						expire: invite.expiresTimestamp
+					})
+				})
+			});
+		}
 		return invites
 	},
 	getAuthor(message) {
@@ -223,6 +283,16 @@ module.exports = {
 		this.setSafe(object[properties[0]], value, ...properties.slice(1))
 	},
 
+	removeElements(array, ...elements) {
+		let arr = this.clone(array)
+		for(let i = arr.length-1; i >= 0; i--) {
+			if(elements.includes(arr[i])) {
+				arr.splice(i, 1)
+			}
+		}
+		return arr
+	},
+
 
 	isNumber(number) {
 		return /^[0-9]+$/.test(number)
@@ -245,49 +315,59 @@ module.exports = {
 		if(day < weekday) day += 7
 		date.setHours(-24 * (day - weekday))
 	},
-	getHour(duration) {
-		return Math.floor(duration / (1000 * 60 * 60))
+	durationToStr(duration, start = -1, end = -1) { // 0: second, 1: minute, 2: hour, 3: day
+		if(start == -1 || end == -1) {
+			if(this.getDay(duration, true) > 0) {
+				start = 2; end = 3
+			} else if(this.getHour(duration, true) > 0) {
+				start = 1; end = 2
+			} else if(this.getMinute(duration, true) > 0) {
+				start = 0; end = 1
+			} else {
+				start = 0; end = 0
+			}
+		}
+		let str = ''
+		if(end == 0) return `${this.getSecond(duration, true)}s`
+		if(start == 0) str = ` ${this.getSecond(duration, false)}s`
+		if(end == 1) return `${this.getMinute(duration, true)}m${str}`
+		if(start <= 1) str = ` ${this.getMinute(duration, false)}m${str}`
+		if(end == 2) return `${this.getHour(duration, true)}h${str}`
+		if(start <= 2) str = ` ${this.getHour(duration, false)}h${str}`
+		if(end == 3) return `${this.getDay(duration)}d${str}`
 	},
-	getMinute(duration) {
-		return Math.floor((duration / (1000 * 60)) % 60)
+	getDay(duration) {
+		return Math.floor(duration / 86400000)
 	},
-	getSecond(duration) {
+	getHour(duration, end = true) {
+		if(end) return Math.floor(duration / 3600000)
+		return Math.floor((duration / 3600000) % 24)
+	},
+	getMinute(duration, end = false) {
+		if(end) return Math.floor(duration / 60000)
+		return Math.floor((duration / 60000) % 60)
+	},
+	getSecond(duration, end = false) {
+		if(end) return Math.floor(duration / 1000)
 		return Math.floor((duration / 1000) % 60)
 	},
 
+	normalizeSpacing(str, length, alignment = 'center') {
+		const leftover = Math.max(0, length - str.length)
+		if(alignment  === 'left') {
+			return str + Array(leftover).fill(' ').join('')
+		} else if(alignment  === 'right') {
+			return Array(leftover).fill(' ').join('') + str 
+		} else {
+			return Array(Math.floor(leftover/2)).fill(' ').join('') + str + Array(Math.ceil(leftover/2)).fill(' ').join('')
+		}
+	},
 
-	success(channel, message) {
-		channel.send({ embed: {
-			title: 'Success!',
-			description: message
-		}})
-	},
-    exists(variable) {
-        return typeof variable !== 'undefined';
-    },
-
-	equalStr(str, opt) {
-		if(!module.exports.exists(str)) return false;
-		options = opt.split(' ');
-		for(var option of options) {
-			if(str.toLowerCase() === option.toLowerCase()) return true;
-		}
-		return false;
-	},
-	combine(elements, delim) {
-		str = ''
-		for(var element of elements) {
-			str += element + delim;
-		}
-		return str.slice(0, str.length-delim.length).trim();
-	},
-	slice(str, opt) {
-		options = opt.replace(/{prefix}/gi, config.prefix).split(' ');
-		for(var option of options) {
-			str = str.trim().slice(option.length);
-		}
-		return str.trim();
-	},
+	/**
+	 * Adds a postfix to a number (1st, 2nd, 3rd...)
+	 * @param {int} num The number to add a postfix to
+	 * @returns a string with the postfix
+	 */
 	numPostfix(num) {
 		if(Math.floor(num%100/10) == 1) return `${num}th`;
 		if(num%10 == 1) return `${num}st`;
@@ -312,12 +392,6 @@ module.exports = {
 	},
 	getURL(guild, channel, message) {
 		return 'https://discordapp.com/channels/'+guild+'/'+channel+'/'+message;
-	},
-
-	sum(array, property) {
-		sum = 0;
-		for(let num of array.map(element => element[property])) sum += num;
-		return sum;
 	}
 
 };

@@ -285,7 +285,7 @@ function replaceStr(str) {
 		const args = x.slice(1, -1).split('.')
 		people = module.exports.get(x.slice(1, args[4] === undefined ? -1 : (-args[4].length-2)))
 		if(people.length === 0) return 'nobody here...'
-		return `<@!${people.slice(`-${args[4]}`).join('> <!@')}>`
+		return `<@!${people.slice(`-${args[4]}`).join('> <@!')}>`
 	})
     //Leveling
     str = str.replace(/{member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting|invite)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, 
@@ -340,11 +340,6 @@ function getDefault(stat, category = 'not allTime') {
 
 // I have no idea what I did here but at least it works man
 function updateVoice(member, isRecording) {
-
-	function date(timestamp) {
-		date = new Date(timestamp)
-		return `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
-	}
 
 	let latest = Tools.getSafe(data['Leveling'].stats, 0, member, 'latest', 'voice')
 	let now = Date.now()

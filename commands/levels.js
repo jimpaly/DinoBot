@@ -20,21 +20,20 @@ module.exports = {
 			developer: false,
 			guildOnly: false,
 			execute(message, args) {
-				if(args.length == 0) {
-                    showStat(message.channel, Tools.getAuthor(message))
-                } else if(args.length == 1) {
-                    let stat = getStatName(args[0].toLowerCase())
-                    if(stat !== undefined) showStat(message.channel, Tools.getAuthor(message), stat)
-                    else Tools.findMember(message, args[0]).then((member) => {
+				if(args.length == 0) return showStat(message.channel, Tools.getAuthor(message))
+                const stat = getStatName(args[0].toLowerCase())
+                if(stat === undefined) {
+                    Tools.findMember(message, args[0]).then((member) => {
                         if(member !== undefined) showStat(message.channel, member)
-                        else Tools.fault(message.channel, `${args[0]} isn't a valid stat! Try \`{prefix}help stats\` to learn more`)
+                        else Tools.fault(message.channel, `I can't seem to find a person named ${args[0]}!`)
                     })
+                } else if(args.length == 1) {
+                    showStat(message.channel, message.member, stat)
                 } else {
-                    let stat = getStatName(args[0].toLowerCase())
-                    if(stat !== undefined) Tools.findMember(message, args[1]).then((member) => {
+                    Tools.findMember(message, args[1]).then((member) => {
                         if(member !== undefined) showStat(message.channel, member, stat)
                         else Tools.fault(message.channel, `I can't seem to find a person named ${args[1]}!`)
-                    }); else Tools.fault(message.channel, `${args[0]} isn't a valid stat! Try \`{prefix}help stats\` to learn more`)
+                    });
                 }
 			}
 		}, {
@@ -45,8 +44,7 @@ module.exports = {
                         Visit {levels.channel} to learn more!`,
 			usage: [
 				['level', `Show your levels and points`],
-				['level <member>', `Show someone's levels`],
-                ['level leaderboard|all', `Show top members in points`]
+				['level <member>', `Show someone's levels`]
 			],
 			public: true,
 			developer: false,
@@ -54,8 +52,6 @@ module.exports = {
 			execute(message, args) {
 				if(args.length === 0) {
                     showStat(message.channel, message.member, 'points')
-                } else if(['leaderboard', 'lb', 'all'].includes(args[0])) {
-
                 } else {
                     Tools.findMember(message, args[0]).then((member) => {
                         if(member !== undefined) showStat(message.channel, member, stat)
@@ -64,19 +60,52 @@ module.exports = {
                 }
 			}
 		}, {
-            name: 'Invites',
-            alias: ['invites', 'invite'],
-            description: `Show your invite stats!`,
+            name: 'Reputation',
+            alias: ['rep', 'reputation'],
+            description: `Give rep to others to show your appreciation!`,
             usage: [
-                ['invites', `Show your stats`],
-                ['invites <@member>', `Show someone else's invite stats`],
-                ['invites leaderboard|all', 'Show top members in number of people invited'],
+                ['rep', `Check how much time you have left until you can give rep again`],
+                ['rep <member>', `Give a rep point to someone else`],
             ],
             public: true,
             developer: false,
             guildOnly: false,
             execute(message, args) {
-                message.channel.send('blop')
+				message.channel.send('blop')
+                // TODO: Can't give rep to the person who gave it to you and the person you just gave it to
+            }
+        }, {
+            name: 'Invites',
+            alias: ['invites', 'invite'],
+            description: `Show your invite stats!
+                            \`joined\` consists of everyone you have ever invited
+                            \`now\`/\`current\` is everyone that is currently in the server
+                            \`stayed\` is everyone that has never left the server`,
+            usage: [
+                ['invites', `Get the active invite links you have`],
+                ['invites <member>', `Show someone else's invite links`],
+                ['invites joined|now|stayed', `List the people you've invited`],
+                ['invites joined|now|stayed <member>', `Show someone else's invites`],
+            ],
+            public: true,
+            developer: false,
+            guildOnly: false,
+            execute(message, args) {
+                if(args.length == 0) return listInviteLinks(message.channel, message.member)
+                const category = getInviteCategoryName(args[0])
+                if(category === undefined) {
+                    Tools.findMember(message, args[0]).then((member) => {
+                        if(member !== undefined) listInviteLinks(message.channel, member)
+                        else Tools.fault(message.channel, `I can't seem to find a person named ${args[0]}!`)
+                    });
+                } else if(args.length == 1) {
+                    listInvites(message.channel, message.member, category)
+                } else {
+                    Tools.findMember(message, args[1]).then((member) => {
+                        if(member !== undefined) listInvites(message.channel, member, category)
+                        else Tools.fault(message.channel, `I can't seem to find a person named ${args[1]}!`)
+                    });
+                }
             }
         }, {
             name: 'Leaderboard',
@@ -87,6 +116,8 @@ module.exports = {
                 ['leaderboard rep|reputation', 'Show top members in reputation points']
                 ['leaderboard messages|texting', `Show top members in message count`],
                 ['leaderboard voice|talking', 'Show top members in time in voice chats'],
+                ['leaderboard bumps', 'Show top members in Disboard bumps made'],
+                ['leaderboard counting', 'Show top members in numbers counted in {counting}'],
                 ['leaderboard invites', 'Show top members in people invited'],
             ],
             public: true,
@@ -229,12 +260,6 @@ module.exports = {
             }
         }
     },
-    addInvite(member, inviter) {
-
-    },
-    removeInvite(member, inviter) {
-
-    }
 };
 
 /**
@@ -347,26 +372,53 @@ function showStat(channel, member, stat) {
     }
     channel.send({embed: Data.replaceEmbed(embed)})
 }
-function listStat(channel, stat) {
+function showLeaderboard(channel, member, stat) {
 
+}
+async function listInvites(channel, member, category) {
+    let message = await channel.send('Loading people...')
+    let invites = Data.get(`member.${member.id}.invite.joined`)
+    if(category !== 'joined') invites = Tools.removeElements(invites, ...Data.get(`member.${member.id}.invite.left`))
+    if(category === 'stayed') invites = Tools.removeElements(invites, ...Data.get(`member.${member.id}.invite.returned`))
+    Tools.pageList(message, -1, 10, invites.map((invite) => `<@!${invite}>`), {
+        title: (category === 'joined' ? 'All' :
+                category === 'current' ? 'Currently Present' :
+                'Always Stayed') + ` Invites of ${Tools.getName(member)}`,
+        description: invites.length == 0 ? 'no invites ;-;' : '',
+        thumbnail: { url: Tools.getAvatar(member) }
+    })
+}
+async function listInviteLinks(channel, member) {
+    let message = await channel.send('Loading invites...')
+    let invites = await Tools.getInviteLinks(member)
+    Tools.pageList(message, -1, 10, invites.map((invite) => {
+        let str = `\`${Tools.normalizeSpacing(invite.code, 8, 'left')}\``
+        str += `([link](https://discord.gg/${invite.code}))`
+        str += ` | uses: \`${Tools.normalizeSpacing(`${invite.uses}/${invite.max || '∞'}`, 4, 'left')}\``
+        str += ` | expires: \`${Tools.normalizeSpacing(invite.expire ? Tools.durationToStr(invite.expire - Date.now()) : 'never', 6, 'left')}\``
+        return str
+    }), { 
+        title: `Invite links of ${Tools.getName(member)}`,
+        description: invites.length == 0 ? 'no invites ;-;' : '',
+        thumbnail: { url: Tools.getAvatar(member) }
+    })
 }
 
 function getStatName(alias) {
-    if(['level', 'levels', 'leveling', 'lvl', 'points', 'point', 'pts', 'score', 'scores'].includes(alias)) {
-        return 'points'
-    } else if(['messages', 'message', 'text', 'texting', 'messaging', 'texts'].includes(alias)) {
-        return 'messages'
-    } else if(['voice', 'vc', 'talk', 'talking', 'chat', 'chatting'].includes(alias)) {
-        return 'voice'
-    } else if(['rep', 'reputation', 'reps'].includes(alias)) {
-        return 'rep'
-    } else if(['bumps', 'bump', 'disboard'].includes(alias)) {
-        return 'bumps'
-    } else if(['counting', 'count', 'cnt', 'counts'].includes(alias)) {
-        return 'counting'
-    } else if(['invite', 'invites'].includes(alias)) {
-        return 'invite'
-    }
+    if(['level', 'levels', 'leveling', 'lvl', 'points', 'point', 'pts', 'score', 'scores'].includes(alias)) return 'points'
+    if(['messages', 'message', 'text', 'texting', 'messaging', 'texts'].includes(alias)) return 'messages'
+    if(['voice', 'vc', 'talk', 'talking', 'chat', 'chatting'].includes(alias)) return 'voice'
+    if(['rep', 'reputation', 'reps'].includes(alias)) return 'rep'
+    if(['bumps', 'bump', 'disboard'].includes(alias)) return 'bumps'
+    if(['counting', 'count', 'cnt', 'counts'].includes(alias)) return 'counting'
+    if(['invite', 'invites'].includes(alias)) return 'invite'
+}
+function getInviteCategoryName(alias) {
+    if(['joined', 'list', 'lst', 'all'].includes(alias)) return 'joined'
+    if(['current', 'now', 'here', 'present'].includes(alias)) return 'current'
+    if(['stayed', 'stay', 'staying'].includes(alias)) return 'stayed'
+    // if(['left', 'leave', 'kicked', 'banned'].includes(alias)) return 'left'
+    // if(['returned', 'return'].includes(alias)) return 'returned'
 }
 
 /*
