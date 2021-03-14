@@ -1,6 +1,8 @@
 const Tools = require('../tools')
 const Data = require('../data');
 
+// IDEA: Get money from daily and use it to buy rep to give, lower cooldowns, or increase luck
+
 module.exports = {
 	name: 'Leveling',
 	description: 'Get active, gain points, raise your level, and have fun!',
@@ -28,7 +30,7 @@ module.exports = {
                         else Tools.fault(message.channel, `I can't seem to find a person named ${args[0]}!`)
                     })
                 } else if(args.length == 1) {
-                    showStat(message.channel, message.member, stat)
+                    showStat(message.channel, Tools.getAuthor(message), stat)
                 } else {
                     Tools.findMember(message, args[1]).then((member) => {
                         if(member !== undefined) showStat(message.channel, member, stat)
@@ -51,7 +53,7 @@ module.exports = {
 			guildOnly: false,
 			execute(message, args) {
 				if(args.length === 0) {
-                    showStat(message.channel, message.member, 'points')
+                    showStat(message.channel, Tools.getAuthor(message), 'points')
                 } else {
                     Tools.findMember(message, args[0]).then((member) => {
                         if(member !== undefined) showStat(message.channel, member, stat)
@@ -71,7 +73,53 @@ module.exports = {
             developer: false,
             guildOnly: false,
             execute(message, args) {
-				message.channel.send('blop')
+                if(args.length == 0 || message.channel.type !== 'text') {
+                    message.channel.send({embed: Data.replaceEmbed({
+                        title: `Rep Status of ${Tools.getName(Tools.getAuthor(message))}`,
+                        description: `**Your rep: {member.${message.author.id}.rep}**`,
+                        fields: [{
+                            name: 'Next rep In...',
+                            value: `{member.${message.author.id}.rep.cooldown}`,
+                            inline: true
+                        }, {
+                            name: 'Last given to...',
+                            value: `{member.${message.author.id}.latest.repTo}`,
+                            inline: true
+                        }, {
+                            name: 'Last recieved from...',
+                            value: `{member.${message.author.id}.latest.repFrom}`,
+                            inline: true
+                        }]
+                    })})
+                } else {
+                    Tools.findMember(message, args[0]).then((member) => {
+                        if(Data.get(`member.${message.author.id}.latest.rep`) + Data.get('level.rep.cooldown')*60000 > Date.now()) {
+                            Tools.fault(message.channel, `Please wait {member.${message.author.id}.rep.cooldown} until you can give rep again!`)
+                        } else if(member === undefined) {
+                            Tools.fault(message.channel, `I can't seem to find a person named ${args[0]}!`)
+                        } else if(Data.get(`member.${message.author.id}.rep`) <= 0) {
+                            Tools.fault(message.channel, `You don't have any rep left to give!`)
+                        } else if(member.id === Data.get(`member.${message.author.id}.latest.repTo`)) {
+                            Tools.fault(message.channel, `You can't give rep to the same person twice in a row! Try someone else!`)
+                        } else if(member.id === Data.get(`member.${message.author.id}.latest.repFrom`)) {
+                            Tools.fault(message.channel, `Why are you giving the rep back to the person who gave it to you? Try someone else!`)
+                        } else {
+                            Data.set(`member.${message.author.id}.rep.add`, { given: 1 }, false)
+                            Data.set(`member.${member.id}.rep.add`, { recieved: 1 }, false)
+                            Data.set(`member.${message.author.id}.points.add`, Data.get('level.rep.give'), false)
+                            Data.set(`member.${member.id}.points.add`, Data.get('level.rep.recieve'), false)
+                            Data.set(`member.${message.author.id}.latest.repTo`, member.id, false)
+                            Data.set(`member.${member.id}.latest.repFrom`, message.author.id, false)
+                            Data.set(`member.${message.author.id}.latest.rep`, Date.now())
+                            message.channel.send({embed: Data.replaceEmbed({
+                                title: 'Rep Given!',
+                                description: `Given to ${Tools.getName(member)}
+                                            You now have {member.${message.author.id}.rep} rep left`
+                            })})
+                        }
+                    });
+                }
+
                 // TODO: Can't give rep to the person who gave it to you and the person you just gave it to
             }
         }, {
@@ -91,7 +139,7 @@ module.exports = {
             developer: false,
             guildOnly: false,
             execute(message, args) {
-                if(args.length == 0) return listInviteLinks(message.channel, message.member)
+                if(args.length == 0) return listInviteLinks(message.channel, Tools.getAuthor(message))
                 const category = getInviteCategoryName(args[0].toLowerCase())
                 if(category === undefined) {
                     Tools.findMember(message, args[0]).then((member) => {
@@ -99,7 +147,7 @@ module.exports = {
                         else Tools.fault(message.channel, `I can't seem to find a person named ${args[0]}!`)
                     });
                 } else if(args.length == 1) {
-                    listInvites(message.channel, message.member, category)
+                    listInvites(message.channel, Tools.getAuthor(message), category)
                 } else {
                     Tools.findMember(message, args[1]).then((member) => {
                         if(member !== undefined) listInvites(message.channel, member, category)
@@ -131,7 +179,7 @@ module.exports = {
                 }
                 stat = stat ?? 'points'
                 time = time ?? 'monthly'
-                showLeaderboard(message.channel, message.member, stat, time, option)
+                showLeaderboard(message.channel, Tools.getAuthor(message), stat, time, option)
             }
         }, {
             name: 'Daily',
@@ -155,6 +203,7 @@ module.exports = {
                 ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
                 ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
                 ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc'],
+                ['levelConfig rep [give points] [recieve points] [cooldown]', 'Set points gained from giving or recieving rep'],
                 ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
                 ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
                 ['levelConfig invite [points]', 'Set points gained for inviting someone']
@@ -183,6 +232,11 @@ module.exports = {
                     if(Tools.isNumber(args[2])) Data.set('level.voice', { max: parseInt(args[2]) })
                     if(Tools.isNumber(args[3])) Data.set('level.voice.cooldown', parseInt(args[3]))
                     message.channel.send(Data.replace('Voice settings set to: {level.voice}, {level.voice.cooldown}'))
+                } else if(['rep', 'reputation', 'reps'].includes(args[0])) {
+                    if(Tools.isNumber(args[1])) Data.set('level.rep.give', parseInt(args[1]))
+                    if(Tools.isNumber(args[2])) Data.set('level.rep.recieve', parseInt(args[2]))
+                    if(Tools.isNumber(args[3])) Data.set('level.rep.cooldown', parseInt(args[3]))
+                    message.channel.send(Data.replace('Rep settings set to: give: {level.rep.give}, recieve: {level.rep.recieve}, {level.rep.cooldown}'))
                 } else if(['bump', 'bumping', 'disboard'].includes(args[0])) {
                     if(Tools.isNumber(args[1])) Data.set('level.bump', parseInt(args[1]))
                     message.channel.send(Data.replace('Bump settings set to: {level.bump}'))
@@ -493,7 +547,10 @@ function getRepCategoryName(alias) {
     "lastUpdate": 0,
     "latest": {
         "points": 0,
-        "voice": 0
+        "voice": 0,
+        "rep": 0,
+        "repTo": "",
+        "repFrom": ""
     },
     "allTime": {
         "points": 0,

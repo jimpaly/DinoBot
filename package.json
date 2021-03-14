@@ -1,6 +1,6 @@
 {
   "name": "dinobot",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "Bot for a Discord server I'm in",
   "main": "bot.js",
   "scripts": {

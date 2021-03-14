@@ -144,8 +144,8 @@ module.exports = {
 					expire: invite.expiresTimestamp
 				})
 			})
-		} else {
-			client.guilds.cache.forEach(async guild => {
+		} else { // TODO: only do channels here
+			for(const guild of member.client.guilds.cache.array()) {
 				let inv = await guild.fetchInvites()
 				inv.forEach(invite => {
 					if(invite.inviter.id !== member.id) return
@@ -156,7 +156,7 @@ module.exports = {
 						expire: invite.expiresTimestamp
 					})
 				})
-			});
+			}
 		}
 		return invites
 	},

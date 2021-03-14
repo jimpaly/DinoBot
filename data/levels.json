@@ -19,6 +19,13 @@
             },
             "cooldown": 0
         },
+        "rep": {
+            "points": {
+                "give": 50,
+                "recieve": 250
+            },
+            "cooldown": 0
+        },
         "bump": 50,
         "counting": 50,
         "invite": 50

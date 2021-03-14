@@ -45,6 +45,13 @@ module.exports = {
 	},
 
 	/**
+	 * 
+	 *  ██████   ███████  ████████ 
+	 * ██        ██          ██    
+	 * ██   ███  █████       ██    
+	 * ██    ██  ██          ██    
+	 *  ██████   ███████     ██    
+	 * 
 	 * Get data stored in the client
 	 * @param {string} name The name of the data
 	 */
@@ -61,6 +68,9 @@ module.exports = {
 			case 'level.messaging': return data['Leveling'].config.messaging.points
 			case 'level.voice.cooldown': return data['Leveling'].config.voice.cooldown
 			case 'level.voice': return data['Leveling'].config.voice.points
+			case 'level.rep.cooldown': return data['Leveling'].config.rep.cooldown
+			case 'level.rep.give': return data['Leveling'].config.rep.points.give
+			case 'level.rep.recieve': return data['Leveling'].config.rep.points.recieve
 			case 'level.bump': return data['Leveling'].config.bump
 			case 'level.counting': return data['Leveling'].config.counting
 			case 'level.invite': return data['Leveling'].config.invite
@@ -86,7 +96,8 @@ module.exports = {
 		}
 		if(/^member\.((?!\.).)+\.invite\.(joined|left|returned)$/.test(name)) return Tools.getSafe(stats, [], 'allTime', 'invite', args[3])
 		if(/^member\.((?!\.).)+\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
-		if(/^member\.((?!\.).)+\.latest\.(points|voice|rep|repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
+		if(/^member\.((?!\.).)+\.latest\.(points|voice|rep)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
+		if(/^member\.((?!\.).)+\.latest\.(repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, "", 'latest', args[3])
 
 		// Profiles
 		let profile = data['Profiles'].profiles[args[1]]
@@ -106,6 +117,13 @@ module.exports = {
         if(args[0] === 'counting') return data['Counting'].channel === args[1]
 	},
 	/**
+	 * 
+	 * ███████  ███████  ████████ 
+	 * ██       ██          ██    
+	 * ███████  █████       ██    
+	 *      ██  ██          ██    
+	 * ███████  ███████     ██                   
+	 * 
 	 * Update data in the client and save it to its file
 	 * @param {string} name The name of the data
 	 * @param value The new value to set the data to 
@@ -177,6 +195,9 @@ module.exports = {
 				case 'level.messaging': Tools.paste(data['Leveling'].config.messaging.points, value); break
 				case 'level.voice.cooldown': data['Leveling'].config.voice.cooldown = value; break
 				case 'level.voice': Tools.paste(data['Leveling'].config.voice.points, value); break
+				case 'level.rep.cooldown': data['Leveling'].config.rep.cooldown = value; break
+				case 'level.rep.give': data['Leveling'].config.rep.points.give = value; break
+				case 'level.rep.recieve': data['Leveling'].config.rep.points.recieve = value; break
 				case 'level.bump': data['Leveling'].config.bump = value; break
 				case 'level.counting': data['Leveling'].config.counting = value; break
 				case 'level.invite': data['Leveling'].config.invite = value; break
@@ -238,6 +259,13 @@ module.exports = {
 };
 
 /**
+ * 
+ * ██████   ███████  ██████   ██        █████    ██████  ███████ 
+ * ██   ██  ██       ██   ██  ██       ██   ██  ██       ██      
+ * ██████   █████    ██████   ██       ███████  ██       █████   
+ * ██   ██  ██       ██       ██       ██   ██  ██       ██      
+ * ██   ██  ███████  ██       ███████  ██   ██   ██████  ███████                                                        
+ * 
  * Replaces keys in a string with data from the client
  * @param {string} str The string to replace
  */
@@ -264,8 +292,12 @@ function replaceStr(str) {
 	//Rep
 	str = str.replace(/{member\.((?!\.).)+\.latest\.(repTo|repFrom)}/gi, (x) => {
 		person = module.exports.get(x.slice(1, -1))
-		if(person === 0) return 'nobody ;-;'
-		return `<@!${person}>`
+		return person === '' ? 'nobody ;-;' : `<@!${person}>`
+	})
+	str = str.replace(/{member\.((?!\.).)+\.rep\.cooldown}/gi, (x) => {
+		let lastGiven = module.exports.get(`${x.slice(1, -14)}.latest.rep`)
+		let cooldown = lastGiven + module.exports.get('level.rep.cooldown')*60000 - Date.now()
+		return cooldown < 0 || lastGiven == 0 ? 'Rep is ready!' : Tools.durationToStr(cooldown, 0, 3)
 	})
 	str = str.replace(/{member\.((?!\.).)+\.rep\.(allTime|daily|weekly|monthly|annual)}/gi, (x) => {
 		rep = module.exports.get(x.slice(1, -1))
@@ -295,11 +327,11 @@ function replaceStr(str) {
 		if(points.min == points.max) return `${points.max} point${points.max == 1 ? '' : 's'}`
 		return `${points.min} to ${points.max} point${points.max == 1 ? '' : 's'}`
 	})
-	str = str.replace(/{level\.(bump|counting|invite)}/gi, (x) => {
+	str = str.replace(/{level\.(rep\.give|rep\.recieve|bump|counting|invite)}/gi, (x) => {
 		let points = module.exports.get(x.slice(1, -1))
 		return `${points} point${points == 1 ? '' : 's'}`
 	})
-	str = str.replace(/{level\.(messaging|voice)\.cooldown}/gi, (x) => {
+	str = str.replace(/{level\.(messaging|voice|rep)\.cooldown}/gi, (x) => {
 		let cooldown = module.exports.get(x.slice(1, -1))
 		return `${cooldown} minute${cooldown == 1 ? '' : 's'}`
 	})
@@ -331,7 +363,7 @@ function resetStats(member) {
 }
 
 function getDefault(stat, category = 'not allTime') {
-	if(stat === 'rep') return { given: 0, recieved: 0 }
+	if(stat === 'rep') return { given: 0, recieved: 1 }
 	if(stat === 'invite' && category === 'allTime') return { joined: [], left: [], returned: [] }
 	if(stat === 'invite') return { joined: 0, left: 0, returned: 0 }
 	return 0
