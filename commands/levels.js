@@ -78,7 +78,7 @@ module.exports = {
                         title: `Rep Status of ${Tools.getName(Tools.getAuthor(message))}`,
                         description: `**Your rep: {member.${message.author.id}.rep}**`,
                         fields: [{
-                            name: 'Next rep In...',
+                            name: 'Next rep in...',
                             value: `{member.${message.author.id}.rep.cooldown}`,
                             inline: true
                         }, {
@@ -182,17 +182,62 @@ module.exports = {
                 showLeaderboard(message.channel, Tools.getAuthor(message), stat, time, option)
             }
         }, {
-            name: 'Daily',
-            alias: ['daily', 'reward', 'rewards'],
-            description: `Earn daily rewards! (resets ever day at 0:00 GMT)`,
+            name: 'Daily Streaks',
+            alias: ['daily', 'reward', 'rewards', 'streak', 'streaks'],
+            description: `Earn daily rewards! Resets ever day at 0:00 (You can set it to follow your timezone with \`{prefix}timezone\`)`,
             usage: [
-                ['daily', `Obtain your daily reward!`]
+                ['daily', `Obtain your daily reward!`],
+                ['daily leaderboard', 'Show a leaderboard of the highest daily streaks!']
             ],
             public: true,
             developer: false,
             guildOnly: true,
             execute(message, args) {
-                message.channel.send('blop')
+                if(['leaderboard', 'lb', 'rank', 'ranks', 'ranking'].includes(args[0])) {
+                    message.channel.send('blop')
+                } else {
+                    let cooldown = Data.get(`member.${message.author.id}.daily.cooldown`)
+                    let embed = {
+                        description: '',
+                        thumbnail: {url: Tools.getAvatar(message.author)},
+                        fields: [{
+                            name: 'Next reward in...',
+                            value: `{member.${message.author.id}.daily.cooldown}`,
+                            inline: true
+                        }, {
+                            name: 'Current Streak',
+                            value: `{member.${message.author.id}.daily.current}`,
+                            inline: true
+                        }, {
+                            name: 'Highest Streak...',
+                            value: `{member.${message.author.id}.daily.highest}`,
+                            inline: true
+                        }]
+                    }
+                    let streak = Data.get(`member.${message.author.id}.daily.current`)
+                    if(cooldown < 0) {
+                        if(streak > 0 && cooldown < -86400000) {
+                            Data.set(`member.${message.author.id}.daily`, 1, false)
+                            embed.description += Data.replace(`Oh no, you lost your streak at ${streak}!`)
+                            streak = 0
+                        } else {
+                            Data.set(`member.${message.author.id}.daily.add`, 1, false)
+                        }
+                        Data.set(`member.${message.author.id}.latest.daily`, Date.now(), false)
+                        embed.title = `Daily Reward Recieved, ${Tools.getName(Tools.getAuthor(message))}!`
+                        let gain = Data.get(`level.daily.${streak%7}`)
+                        if(streak%7 < 6) {
+                            Data.set(`member.${message.author.id}.points.add`, gain)
+                            embed.description += Data.replace(`\nGained ${gain} point${gain == 1 ? '' : 's'}!`)
+                        } else {
+                            Data.set(`member.${message.author.id}.rep.add`, { recieved: gain })
+                            embed.description += Data.replace(`\nGained ${gain} rep!`)
+                        }
+                    } else {
+                        embed.title = `Your Daily Reward Isn't Ready Yet, ${Tools.getName(Tools.getAuthor(message))}!`
+                    }
+                    message.channel.send({embed: Data.replaceEmbed(embed)})
+                }
             }
         }, {
             name: 'Leveling Configuration',
@@ -203,6 +248,7 @@ module.exports = {
                 ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
                 ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
                 ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc'],
+                ['levelConfig daily <day> <points>', 'Set the daily rewards. <day> is a number from 0 to 6. Every 7 days, rep will be rewarded in place of points'],
                 ['levelConfig rep [give points] [recieve points] [cooldown]', 'Set points gained from giving or recieving rep'],
                 ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
                 ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
@@ -232,6 +278,9 @@ module.exports = {
                     if(Tools.isNumber(args[2])) Data.set('level.voice', { max: parseInt(args[2]) })
                     if(Tools.isNumber(args[3])) Data.set('level.voice.cooldown', parseInt(args[3]))
                     message.channel.send(Data.replace('Voice settings set to: {level.voice}, {level.voice.cooldown}'))
+                } else if(['daily', 'reward', 'rewards', 'streak', 'streaks'].includes(args[0])) {
+                    if(Tools.isNumber(args[1]) && Tools.isNumber(args[2])) Data.set(`level.daily.${args[1]}`, parseInt(args[2]))
+                    message.channel.send(Data.replace('Daily Rewards set to: {level.daily}'))
                 } else if(['rep', 'reputation', 'reps'].includes(args[0])) {
                     if(Tools.isNumber(args[1])) Data.set('level.rep.give', parseInt(args[1]))
                     if(Tools.isNumber(args[2])) Data.set('level.rep.recieve', parseInt(args[2]))
@@ -430,7 +479,7 @@ function showStat(channel, member, stat) {
     }
     channel.send({embed: Data.replaceEmbed(embed)})
 }
-async function showLeaderboard(channel, member, stat, time, option) {
+async function showLeaderboard(channel, member, stat, time, option) { // TODO: Add daily steaks
     const message = await channel.send('Loading leaderboard...')
     let memberPlace = {}
     let leaderboard = Data.get('level.members').map((otherMember) => {
@@ -449,6 +498,7 @@ async function showLeaderboard(channel, member, stat, time, option) {
             stat: otherStat
         }
     }).sort((a, b) => b.stat - a.stat).map((memberStat, index) => {
+        // TODO: optimize by taking advantage of replaceEmbed (or is this really optimizing?)
         let statStr = memberStat.stat+''
         if(stat === 'voice') statStr = Tools.durationToStr(memberStat.stat, 1, 2)
         let ret = `${index+1}. <@!${memberStat.member}> - ${statStr} `
@@ -548,10 +598,15 @@ function getRepCategoryName(alias) {
     "latest": {
         "points": 0,
         "voice": 0,
+        "daily": 0,
         "rep": 0,
         "repTo": "",
         "repFrom": ""
     },
+    "streak": {
+        "highest": 0,
+        "current": 0
+    }
     "allTime": {
         "points": 0,
         "rep": {

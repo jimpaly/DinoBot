@@ -84,6 +84,8 @@ module.exports = {
 		if(args[0] === 'disabled') return data['Configuration'].disabled.includes(args[1])
 
 		// Leveling
+		if(/^level\.levels\.((?!\.).)+$/.test(name)) return data['Leveling'].config.levels[args[2]] ?? 0
+		if(/^level\.daily\.((?!\.).)+$/.test(name)) return data['Leveling'].config.daily[args[2]] ?? 0
 		let stats = data['Leveling'].stats[args[1]]
 		if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting|invite)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name)) {
 			resetStats(args[1])
@@ -94,13 +96,22 @@ module.exports = {
 			if(args[2] === 'invite' && args[3] === 'allTime') return Tools.mapObject(stat, (value) => value.length)
 			return stat
 		}
+		if(/^member\.((?!\.).)+\.daily(|\.highest|\.current)$/.test(name)) return Tools.getSafe(stats, 0, 'streak', args[3] ?? 'current')
+		if(/^member\.((?!\.).)+\.daily\.cooldown$/.test(name)) {
+			let latest = new Date(Tools.getSafe(stats, 0, 'latest', 'daily'))
+			latest.setUTCHours(24 + this.get(`member.${args[1]}.timezone.offset`), 0, 0)
+			return latest - Date.now()
+		} 
 		if(/^member\.((?!\.).)+\.invite\.(joined|left|returned)$/.test(name)) return Tools.getSafe(stats, [], 'allTime', 'invite', args[3])
 		if(/^member\.((?!\.).)+\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
-		if(/^member\.((?!\.).)+\.latest\.(points|voice|rep)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
+		if(/^member\.((?!\.).)+\.latest\.(points|voice|daily|rep)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
 		if(/^member\.((?!\.).)+\.latest\.(repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, "", 'latest', args[3])
 
 		// Profiles
 		let profile = data['Profiles'].profiles[args[1]]
+		if(/^member\.((?!\.).)+\.timezone.offset$/.test(name)) {
+			return parseFloat(Tools.getTimezoneOffset(Tools.getSafe(profile, '+0', 'timezone')))
+		}
 		if(/^member\.((?!\.).)+\.(joinDate|inviter)(|\.latest)$/.test(name)) {
 			if(args[2] === 'joinDate') {
 				const joinDate = Tools.getSafe(profile, 0, 'joined', 'first')
@@ -186,9 +197,23 @@ module.exports = {
 					Tools.setSafe(stats, value, args[1], category, args[2])
 				}
 			}
-		} else if(/^member\.((?!\.).)+\.latest\.(points|voice|rep|repTo|repFrom)$/.test(name)) {
+		} else if(/^member\.((?!\.).)+\.daily(|\.add)$/.test(name)) {
+			let highest = this.get(`member.${args[1]}.daily.highest`)
+			if(args[3] === 'add') {
+				let streak = this.get(`member.${args[1]}.daily.current`)+value
+				Tools.setSafe(stats, streak, args[1], 'streak', 'current')
+				if(streak > highest) Tools.setSafe(stats, streak, args[1], 'streak', 'highest')
+			} else {
+				Tools.setSafe(stats, value, args[1], 'streak', 'current')
+				if(value > highest) Tools.setSafe(stats, value, args[1], 'streak', 'highest')
+			}
+		} else if(/^member\.((?!\.).)+\.latest\.(points|voice|daily|rep|repTo|repFrom)$/.test(name)) {
 			if(args[3] === 'voice') updateVoice(args[1], value)
 			else Tools.setSafe(stats, value, args[1], 'latest', args[3])
+		} else if(/^level\.levels\.((?!\.).)+$/.test(name)) {
+			data['Leveling'].config.levels[parseInt(args[2])] = value
+		} else if(/^level\.daily\.((?!\.).)+$/.test(name)) {
+			data['Leveling'].config.daily[parseInt(args[2])] = value
 		} else {
 			switch(name) {
 				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
@@ -285,11 +310,19 @@ function replaceStr(str) {
     str = str.replace(/{perm.(.*?)}/gi, (x) => data['Configuration'].disabled.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
     str = str.replace(/{color}/gi, data['Configuration'].color)
 
+	//Daily
+	str = str.replace(/{member\.((?!\.).)+\.daily\.cooldown}/gi, (x) => {
+		let cooldown = module.exports.get(x.slice(1, -1))
+		return cooldown < 0 ? 'Daily reward is ready!' : Tools.durationToStr(cooldown, 0, 3)
+	})
+	str = str.replace(/{member\.((?!\.).)+\.daily(|\.current|\.highest)}/gi, (x) => {
+		return module.exports.get(x.slice(1, -1))
+	})
 	//Voice
 	str = str.replace(/{member\.((?!\.).)+\.voice(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)}/gi, (x) => {
 		return Tools.durationToStr(module.exports.get(x.slice(1, -1)), 1, 2)
 	})
-	//Rep
+	// Rep
 	str = str.replace(/{member\.((?!\.).)+\.latest\.(repTo|repFrom)}/gi, (x) => {
 		person = module.exports.get(x.slice(1, -1))
 		return person === '' ? 'nobody ;-;' : `<@!${person}>`
@@ -297,7 +330,7 @@ function replaceStr(str) {
 	str = str.replace(/{member\.((?!\.).)+\.rep\.cooldown}/gi, (x) => {
 		let lastGiven = module.exports.get(`${x.slice(1, -14)}.latest.rep`)
 		let cooldown = lastGiven + module.exports.get('level.rep.cooldown')*60000 - Date.now()
-		return cooldown < 0 || lastGiven == 0 ? 'Rep is ready!' : Tools.durationToStr(cooldown, 0, 3)
+		return cooldown < 0 ? 'Rep is ready!' : Tools.durationToStr(cooldown, 0, 3)
 	})
 	str = str.replace(/{member\.((?!\.).)+\.rep\.(allTime|daily|weekly|monthly|annual)}/gi, (x) => {
 		rep = module.exports.get(x.slice(1, -1))
@@ -331,6 +364,8 @@ function replaceStr(str) {
 		let points = module.exports.get(x.slice(1, -1))
 		return `${points} point${points == 1 ? '' : 's'}`
 	})
+	str = str.replace(/{level\.(daily|levels)\.((?!\.).)+}/gi, (x) => module.exports.get(x.slice(1, -1)))
+	str = str.replace(/{level.daily}/gi, (x) => data['Leveling'].config.daily.join(' points, ') + ' rep')
 	str = str.replace(/{level\.(messaging|voice|rep)\.cooldown}/gi, (x) => {
 		let cooldown = module.exports.get(x.slice(1, -1))
 		return `${cooldown} minute${cooldown == 1 ? '' : 's'}`

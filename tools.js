@@ -351,6 +351,25 @@ module.exports = {
 		if(end) return Math.floor(duration / 1000)
 		return Math.floor((duration / 1000) % 60)
 	},
+	getTimezoneOffset(timezone) {
+		if(timezone === undefined || typeof timezone !== 'string') return '+0'
+		let date = new Date()
+		try {
+			tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
+		} catch {
+			if(/^(|\+|\-)[0-9]+(:| )[0-9]+$/.test(timezone)) {
+			  let times = timezone.replace(/\+|\-/, '').split(/:| /)
+			  return (timezone.includes('-') ? '-' : '+') + (times[0]%24 + Math.round(times[1]%60/30)/2)
+			} else if(/^(|\+|\-)[0-9]+(\.|\,)[0-9]+$/.test(timezone)) {
+			  let time = timezone.replace(',', '.')
+			  return (time%24 < 0 ? '' : '+') + Math.round(time%24*2)/2
+			} else if(/^(|\+|\-)[0-9]+$/.test(timezone)) {
+			  return (timezone%24 < 0 ? '' : '+') + timezone%24
+			} else return '+0'
+		}
+		let diff = tzDate - new Date(date.getTime() + date.getTimezoneOffset()*60000)
+		return (diff+60000 < 0 ? '' : '+') + Math.round(diff/1800000)/2
+	},
 
 	align(str, length, alignment = 'center') {
 		const leftover = Math.max(0, length - str.length)

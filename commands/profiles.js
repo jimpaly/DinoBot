@@ -19,7 +19,21 @@ module.exports = {
 			developer: false,
 			guildOnly: false,
 			execute(message, args) {
-                message.channel.send('bloop')
+                message.channel.send('Coming soon...')
+			}
+		}, {
+			name: 'Timezone',
+			alias: ['timezone', 'tz', 'time'],
+			description: `Set your timezone! Currently only used for the \`daily\` command`,
+			usage: [
+				['timezone', `Show your current time`],
+				['timezone <timezone>', `Set your timezone`]
+			],
+			public: true,
+			developer: false,
+			guildOnly: false,
+			execute(message, args) {
+                message.channel.send('Coming soon...')
 			}
 		}
     ],
@@ -63,6 +77,7 @@ module.exports = {
 "template": {
     "bio": "",
     "background": "",
+    "timezone": "+0",
     "joined": {
         "first": 0,
         "firstInvite": "",

@@ -5,6 +5,7 @@
     "config": {
         "channel": "",
         "disabled": [],
+        "levels": [],
         "messaging": {
             "points": {
                 "min": 5,
@@ -19,6 +20,15 @@
             },
             "cooldown": 0
         },
+        "daily": [
+            100,
+            200,
+            300,
+            500,
+            700,
+            1000,
+            1
+        ],
         "rep": {
             "points": {
                 "give": 50,
