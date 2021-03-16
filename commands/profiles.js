@@ -24,16 +24,44 @@ module.exports = {
 		}, {
 			name: 'Timezone',
 			alias: ['timezone', 'tz', 'time'],
-			description: `Set your timezone! Currently only used for the \`daily\` command`,
+			description: `Set your timezone! Currently only used for the \`daily\` command
+                        The best way to enter a timezone is with a name from the "TZ database name" column in [this Wikipedia table](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+                        Alternatively, you may use numbers in hours (e.g. +3.5, -2:00, 7)`,
 			usage: [
 				['timezone', `Show your current time`],
-				['timezone <timezone>', `Set your timezone`]
+				['timezone <member>', `Show your current time`],
+				['timezone set <timezone>', `Set your timezone`]
 			],
 			public: true,
 			developer: false,
 			guildOnly: false,
 			execute(message, args) {
-                message.channel.send('Coming soon...')
+                if(['set', 'update', 'edit'].includes(args[0])) {
+                    let timezone = Tools.getTimezone(args[1])
+                    if(timezone === undefined) return Tools.fault(message.channel, `${args[1]} isn't a valid timezone! Try \`{prefix}help timezone\` to learn about what you can enter.`)
+                    Data.set(`member.${message.author.id}.timezone`, timezone)
+                    showTime(Tools.getAuthor(message))
+                } else if(args.length == 0) {
+                    showTime(Tools.getAuthor(message))
+                } else Tools.findMember(message, args[0]).then((member) => {
+                    if(member === undefined) Tools.fault(message.channel, `I couldn't find a person named ${args[0]}!`)
+                    else showTime(member)
+                })
+                function showTime(member) {
+                    message.channel.send({embed: Data.replaceEmbed({
+                        title: `Timezone of ${Tools.getName(member)}`,
+                        thumbnail: {url: Tools.getAvatar(member)},
+                        fields: [{
+                            name: 'Timezone',
+                            value: `{member.${member.id}.timezone}`,
+                            inline: true
+                        }, {
+                            name: 'Current Time',
+                            value: `{member.${member.id}.timezone.time}`,
+                            inline: true
+                        }]
+                    })})
+                }
 			}
 		}
     ],

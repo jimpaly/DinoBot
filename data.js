@@ -98,9 +98,10 @@ module.exports = {
 		}
 		if(/^member\.((?!\.).)+\.daily(|\.highest|\.current)$/.test(name)) return Tools.getSafe(stats, 0, 'streak', args[3] ?? 'current')
 		if(/^member\.((?!\.).)+\.daily\.cooldown$/.test(name)) {
-			let latest = new Date(Tools.getSafe(stats, 0, 'latest', 'daily'))
-			latest.setUTCHours(24 + this.get(`member.${args[1]}.timezone.offset`), 0, 0)
-			return latest - Date.now()
+			let offset = this.get(`member.${args[1]}.timezone.offset`)*3600000
+			let latest = new Date(Tools.getSafe(stats, 0, 'latest', 'daily') + offset)
+			latest.setUTCHours(24, 0, 0)
+			return latest.getTime() - Date.now() - offset
 		} 
 		if(/^member\.((?!\.).)+\.invite\.(joined|left|returned)$/.test(name)) return Tools.getSafe(stats, [], 'allTime', 'invite', args[3])
 		if(/^member\.((?!\.).)+\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
@@ -109,9 +110,8 @@ module.exports = {
 
 		// Profiles
 		let profile = data['Profiles'].profiles[args[1]]
-		if(/^member\.((?!\.).)+\.timezone.offset$/.test(name)) {
-			return parseFloat(Tools.getTimezoneOffset(Tools.getSafe(profile, '+0', 'timezone')))
-		}
+		if(/^member\.((?!\.).)+\.timezone$/.test(name)) return Tools.getSafe(profile, 'Timezone not set', 'timezone')
+		if(/^member\.((?!\.).)+\.timezone.offset$/.test(name)) return Tools.getTimezoneOffset(Tools.getSafe(profile, '+0', 'timezone'))
 		if(/^member\.((?!\.).)+\.(joinDate|inviter)(|\.latest)$/.test(name)) {
 			if(args[2] === 'joinDate') {
 				const joinDate = Tools.getSafe(profile, 0, 'joined', 'first')
@@ -241,6 +241,8 @@ module.exports = {
 				Tools.setSafe(profiles, Date.now(), args[1], 'joined', 'last')
 				Tools.setSafe(profiles, value, args[1], 'joined', 'lastInvite')
 			}
+		} else if(/^member\.((?!\.).)+\.timezone$/.test(name)) {
+			Tools.setSafe(profiles, value, args[1], 'timezone')
 		} else {
 			didUpdate = false
 		} if(didUpdate && save) return this.save('Profiles')
@@ -369,6 +371,17 @@ function replaceStr(str) {
 	str = str.replace(/{level\.(messaging|voice|rep)\.cooldown}/gi, (x) => {
 		let cooldown = module.exports.get(x.slice(1, -1))
 		return `${cooldown} minute${cooldown == 1 ? '' : 's'}`
+	})
+
+	// Profile
+    str = str.replace(/{member\.((?!\.).)+\.timezone}/gi, (x) => module.exports.get(x.slice(1, -1)))
+    str = str.replace(/{member\.((?!\.).)+\.timezone.time}/gi, (x) => {
+		let time = Date.now() + Tools.getTimezoneOffset(module.exports.get(x.slice(1, -6))) * 3600000
+		return `${Tools.getHour(time, false)}:${Tools.getMinute(time, false)}`
+	})
+    str = str.replace(/{member\.((?!\.).)+\.timezone.offset}/gi, (x) => {
+		let offset = module.exports.get(x.slice(1, -1))
+		return (offset < 0 ? '' : '+') + offset + 'h'
 	})
 
     // Fun

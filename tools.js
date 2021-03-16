@@ -351,11 +351,10 @@ module.exports = {
 		if(end) return Math.floor(duration / 1000)
 		return Math.floor((duration / 1000) % 60)
 	},
-	getTimezoneOffset(timezone) {
-		if(timezone === undefined || typeof timezone !== 'string') return '+0'
-		let date = new Date()
+	getTimezone(timezone) {
+		if(timezone === undefined || typeof timezone !== 'string') return
 		try {
-			tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
+			new Date().toLocaleString('en-US', { timeZone: timezone })
 		} catch {
 			if(/^(|\+|\-)[0-9]+(:| )[0-9]+$/.test(timezone)) {
 			  let times = timezone.replace(/\+|\-/, '').split(/:| /)
@@ -365,10 +364,17 @@ module.exports = {
 			  return (time%24 < 0 ? '' : '+') + Math.round(time%24*2)/2
 			} else if(/^(|\+|\-)[0-9]+$/.test(timezone)) {
 			  return (timezone%24 < 0 ? '' : '+') + timezone%24
-			} else return '+0'
+			} else return
 		}
+		return timezone
+	},
+	getTimezoneOffset(timezone) {
+		if(timezone === undefined || typeof timezone !== 'string') return '+0'
+		let date = new Date()
+		try { tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone })) } 
+		catch { return parseFloat(this.getTimezone(timezone)) }
 		let diff = tzDate - new Date(date.getTime() + date.getTimezoneOffset()*60000)
-		return (diff+60000 < 0 ? '' : '+') + Math.round(diff/1800000)/2
+		return Math.round(diff/1800000)/2
 	},
 
 	align(str, length, alignment = 'center') {
