@@ -104,12 +104,15 @@ module.exports = {
                         } else if(member.id === Data.get(`member.${message.author.id}.latest.repFrom`)) {
                             Tools.fault(message.channel, `Why are you giving the rep back to the person who gave it to you? Try someone else!`)
                         } else {
+                            let give = Data.get('level.rep.give')
+                            let recieve = Data.get('level.rep.recieve')
                             Data.set(`member.${message.author.id}.rep.add`, { given: 1 }, false)
                             Data.set(`member.${member.id}.rep.add`, { recieved: 1 }, false)
-                            Data.set(`member.${message.author.id}.points.add`, Data.get('level.rep.give'), false)
-                            Data.set(`member.${member.id}.points.add`, Data.get('level.rep.recieve'), false)
+                            Data.set(`member.${message.author.id}.points.add`, give, false)
+                            Data.set(`member.${member.id}.points.add`, recieve, false)
                             Data.set(`member.${message.author.id}.latest.repTo`, member.id, false)
                             Data.set(`member.${member.id}.latest.repFrom`, message.author.id, false)
+                            Data.set(`level.log`, `<@!${member.id}> got ${recieve} points from recieving a rep from <@!${message.author.id}>, who got ${give} points for their kindness!`)
                             Data.set(`member.${message.author.id}.latest.rep`, Date.now())
                             message.channel.send({embed: Data.replaceEmbed({
                                 title: 'Rep Given!',
@@ -227,11 +230,13 @@ module.exports = {
                         embed.title = `Daily Reward Recieved, ${Tools.getName(Tools.getAuthor(message))}!`
                         let gain = Data.get(`level.daily.${streak%7}`)
                         if(streak%7 < 6) {
-                            Data.set(`member.${message.author.id}.points.add`, gain)
+                            Data.set(`member.${message.author.id}.points.add`, gain, false)
                             embed.description += Data.replace(`\nGained ${gain} point${gain == 1 ? '' : 's'}!`)
+                            Data.set(`level.log`, `<@!${message.author.id}> got ${gain} points for their daily reward!`)
                         } else {
-                            Data.set(`member.${message.author.id}.rep.add`, { recieved: gain })
+                            Data.set(`member.${message.author.id}.rep.add`, { recieved: gain }, false)
                             embed.description += Data.replace(`\nGained ${gain} rep!`)
+                            Data.set(`level.log`, `<@!${message.author.id}> got ${gain} rep for their daily reward!`)
                         }
                     } else {
                         embed.title = `Your Daily Reward Isn't Ready Yet, ${Tools.getName(Tools.getAuthor(message))}!`
@@ -248,29 +253,32 @@ module.exports = {
             usage: [
                 ['liveStats leaderboard <category> <time-period> <count>', `Creates a live leaderboard of a specific category with a certain number of people`],
                 ['liveStats leaderboard <options...> <message>', 'Makes one of my old messages into a live leaderboard'],
-                ['liveStats leaderboard remove <message>', 'Stop updating a leaderboard'],
-                ['liveStats leaderboard list', 'List all the live leaderboards I\'m updating'],
                 ['liveStats log <log-number>', 'Logs different actions that got people points'],
-                ['liveStats log <log-number> <message>', 'Makes one of my old messages into a log message']
+                ['liveStats log <log-number> <message>', 'Makes one of my old messages into a log message'],
+                ['liveStats remove <message>', 'Stop updating a live message'],
+                ['liveStats list', 'List all the live stats messages I\'m updating'],
             ],
             public: false,
             developer: false,
             guildOnly: true,
             async execute(message, args) {
-                if(['leaderboard', 'lb', 'liveleaderboard', 'livelb'].includes(args[0])) {
-                    if(['remove', 'rem', 'r', 'delete', 'del', 'd', 'dlt'].includes(args[1])) {
-                        if(args.length < 3) return Tools.fault(message.channel, 'Give me a message!')
-                        let msg = Tools.getMessageID(message, args[2], args[3])
-                        Tools.success(message.channel, `I will stop updating the leaderboard on [that message](${Tools.getURL(message.guild, msg[0], msg[1])})!`)
-                        return Data.set(`level.leaderboard.remove.${msg[0]}.${msg[1]}`)
-                    } else if(['list', 'lst', 'l', 'all', 'show'].includes(args[1])) {
-                        return message.channel.send({embed: Data.replaceEmbed({
-                            title: 'Live Leaderboards',
-                            description: Data.get('level.leaderboards').map((lb) => {
-                                return `<#${lb.channel}> [link](${Tools.getURL(message.guild, lb.channel, lb.message)}) - ${lb.stat} ${lb.time}`
-                            }).join('\n')
-                        })})
-                    }
+                if(['remove', 'rem', 'r', 'delete', 'del', 'd', 'dlt'].includes(args[0])) {
+                    if(args.length < 2) return Tools.fault(message.channel, 'Give me a message!')
+                    let msg = Tools.getMessageID(message, args[1], args[2])
+                    Tools.success(message.channel, `I will stop updating the stats on [that message](${Tools.getURL(message.guild, msg[0], msg[1])})!`)
+                    return Data.set(`level.live.remove.${msg[0]}.${msg[1]}`)
+                } else if(['list', 'lst', 'l', 'all', 'show'].includes(args[0])) {
+                    return message.channel.send({embed: Data.replaceEmbed({
+                        title: 'Live Stats Messages',
+                        description: Data.get('level.live').map((lb) => {
+                            if(lb.type === 'leaderboard') {
+                                return `<#${lb.channel}> [link](${Tools.getURL(message.guild, lb.channel, lb.message)}) (leaderboard) - ${lb.stat} ${lb.time}`
+                            } else if(lb.type === 'log') {
+                                return `<#${lb.channel}> [link](${Tools.getURL(message.guild, lb.channel, lb.message)}) (log) - ${lb.num}`
+                            } else return ' oop- '
+                        }).join('\n')
+                    })})
+                } else if(['leaderboard', 'lb', 'liveleaderboard', 'livelb'].includes(args[0])) {
                     let stat = getStatName(args[1]) ?? 'points'
                     let time = getTimePeriodName(args[2]) ?? 'weekly'
                     let count = Math.min(50, Math.max(1, parseInt(args[3]))) || 10
@@ -282,9 +290,20 @@ module.exports = {
                         if(!msg.editable) return Tools.fault(message.channel, `I can't edit that [message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})`)
                         Tools.success(message.channel, `I will update the new live leaderboard at [that message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})!`)
                     }
-                    Data.set(`level.leaderboard.${msg.channel.id}.${msg.id}`, { stat: stat, time: time, count: count })
+                    Data.set(`level.live.leaderboard.${msg.channel.id}.${msg.id}`, { stat: stat, time: time, count: count })
+                    message.delete()
                 } else if(['log', 'logging'].includes(args[0])) {
-
+                    let num = Math.min(50, Math.max(1, parseInt(args[1]))) || 1
+                    let msg
+                    if(args[2] === undefined) msg = await message.channel.send('Loading...')
+                    else {
+                        msg = await Tools.findMessage(message, args[4], args[5])
+                        if(msg === undefined) return Tools.fault(message.channel, `I couldn't find that message!`)
+                        if(!msg.editable) return Tools.fault(message.channel, `I can't edit that [message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})`)
+                        Tools.success(message.channel, `I will update the log #${num} at [that message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})!`)
+                    }
+                    Data.set(`level.live.log.${msg.channel.id}.${msg.id}`, { num: num })
+                    message.delete()
                 }
             }
         }, {
@@ -292,7 +311,7 @@ module.exports = {
             alias: ['levelconfig', 'lvlconfig', 'levelsettings', 'lvlsettings'],
             description: `Set different leveling settings (cooldowns are in minutes)`,
             usage: [
-                ['levelConfig levels <level> <points>', `Configure how much points it takes to get to a certain level`]
+                ['levelConfig levels <level> <points>', `Configure how much points it takes to get to a certain level`],
                 ['levelConfig show|list', `Show all leveling settings`],
                 ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
                 ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
@@ -373,7 +392,10 @@ module.exports = {
         if(message.author.id === '302050872383242240') {
             bump = (message.embeds[0] ?? {}).description
             if(bump !== undefined && bump.includes('Bump done')) {
-                Data.set(`member.${bump.slice(2, 20)}.bumps.add`, 1, false)
+                let member = bump.slice(2, 20)
+                Data.set(`member.${member}.bumps.add`, 1, false)
+                Data.set(`member.${member}.points.add`, Data.get('level.bump'), false)
+                Data.set(`level.log`, `<@!${member}> got ${Data.get(`level.bump`)} points bumping the server!`, false)
             }
         }
 

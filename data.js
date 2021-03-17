@@ -77,8 +77,10 @@ module.exports = {
 			case 'level.invite': return data['Leveling'].config.invite
 			case 'level.members': return Object.keys(data['Leveling'].stats)
 			case 'level.levels': return data['Leveling'].config.levels
-			case 'level.leaderboards': return data['Leveling'].live.leaderboards
-			case 'level.logs': return data['Leveling'].live.logs
+			case 'level.live': return data['Leveling'].live
+			case 'level.live.leaderboards': return data['Leveling'].live.filter((x) => x.type === 'leaderboard')
+			case 'level.live.logs': return data['Leveling'].live.filter((x) => x.type === 'log')
+			case 'level.logs': return data['Leveling'].log
 			case 'counting': return data['Counting'].channel
 			case 'text': return data['Text'].users
 		}
@@ -90,6 +92,7 @@ module.exports = {
 		// Leveling
 		if(/^level\.levels\.((?!\.).)+$/.test(name)) return data['Leveling'].config.levels[args[2]] ?? 0
 		if(/^level\.daily\.((?!\.).)+$/.test(name)) return data['Leveling'].config.daily[args[2]] ?? 0
+		if(/^level\.log\.((?!\.).)+$/.test(name)) return data['Leveling'].log[args[2]-1] ?? { message: '', timestamp: 0 }
 		let stats = data['Leveling'].stats[args[1]]
 		if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting|invite)(|\.allTime|\.daily|\.weekly|\.monthly|\.annual)$/.test(name)) {
 			resetStats(args[1])
@@ -222,7 +225,7 @@ module.exports = {
 				} 
 			}
 		} else if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting)(|\.add)$/.test(name)) {
-			updateLeaderboards({ stat: args[2] })
+			updateLive({ type: 'leaderboard', stat: args[2] })
 			if(args[3] === 'add') {
 				for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual']) {
 					if(args[2] === 'rep') {
@@ -231,6 +234,15 @@ module.exports = {
 							given: oldVal.given + (value.given ?? 0), 
 							recieved: oldVal.recieved + (value.recieved ?? 0) 
 						}, args[1], category, args[2])
+					} else if(args[2] === 'points') {
+						let points = this.get(`member.${args[1]}.${args[2]}.${category}`)
+						let oldLevel = Tools.getLevel(this.get('level.levels'), points)
+						let newLevel = Tools.getLevel(this.get('level.levels'), points+value)
+						Tools.setSafe(stats, points+value, args[1], category, args[2])
+						if(category === 'allTime' && newLevel > oldLevel) {
+							console.log(`level ${newLevel}`)
+                            this.set(`level.log`, `<@!${args[1]}> leveled up to level ${newLevel}`)
+						}
 					} else {
 						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+value, args[1], category, args[2])
 					}
@@ -258,29 +270,26 @@ module.exports = {
 			for(let i = 1; i < levels.length; i++) levels[i] = Math.max(levels[i] ?? 0, levels[i-1])
 		} else if(/^level\.daily\.((?!\.).)+$/.test(name)) {
 			data['Leveling'].config.daily[Math.max(0, Math.min(6, parseInt(args[2])))] = value
-		} else if(/^level\.leaderboard\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
-			let exists = false
-			for(const lb of this.get('level.leaderboards')) {
-				if(lb.channel === args[2] && lb.message === args[3]) {
-					Tools.paste(lb, value)
-					updateLeaderboards(lb)
-					exists = true
-					break
-				}
-			}
-			if(!exists) {
-				data['Leveling'].live.leaderboards.push(Tools.paste({
-					channel: args[2], message: args[3], update: 0
-				}, value))
-				updateLeaderboards({ channel: args[2], message: args[3] })
-			}
-		} else if(/^level\.leaderboard\.remove\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
-			let lbs = this.get('level.leaderboards')
+		} else if(/^level\.live\.(leaderboard|log)\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
+			let idx = -1
+			this.get('level.live').find((val) => val.channel === args[3] && val.message === args[4])
+			let live = { channel: args[3], message: args[4], type: args[2] }
+			Tools.paste(live, value)
+			if(idx < 0) data['Leveling'].live.push(live)
+			else data['Leveling'].live[idx] = live
+			updateLive({ channel: args[3], message: args[4] })
+		} else if(/^level\.live\.remove\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
+			let lbs = this.get('level.live')
 			for(let i = lbs.length-1; i >= 0; i--) {
 				if(lbs[i].channel === args[3] && lbs[i].message === args[4]) {
 					lbs.splice(i, 1)
 				}
 			}
+		} else if(/^level\.log$/.test(name)) {
+			let log = this.get('level.logs')
+			log.unshift({message: value, timestamp: Date.now()})
+			if(log.length > 50) log.pop()
+			updateLive({ type: 'log' })
 		} else {
 			switch(name) {
 				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
@@ -432,6 +441,7 @@ function replaceStr(str) {
 		return `${points} point${points == 1 ? '' : 's'}`
 	})
 	str = str.replace(/{level\.(daily|levels)\.((?!\.).)+}/gi, (x) => module.exports.get(x.slice(1, -1)))
+	str = str.replace(/{level\.log\.((?!\.).)+}/gi, (x) => module.exports.get(x.slice(1, -1)).message || 'No activity ;-;')
 	str = str.replace(/{level.daily}/gi, (x) => data['Leveling'].config.daily.join(' points, ') + ' rep')
 	str = str.replace(/{level\.(messaging|voice|rep)\.cooldown}/gi, (x) => {
 		let cooldown = module.exports.get(x.slice(1, -1))
@@ -462,16 +472,16 @@ function resetStats(member) {
 		let date = new Date()
 		date.setHours(0, 0, 0); if(lastUpdate < date.getTime()) {
 			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'daily', stat)
-			updateLeaderboards({ stat: stat, time: 'daily' })
+			updateLive({ type: 'leaderboard', stat: stat, time: 'daily' })
 		} Tools.setDay(date); if(lastUpdate < date.getTime()) {
 			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'weekly', stat)
-			updateLeaderboards({ stat: stat, time: 'weekly' })
+			updateLive({ type: 'leaderboard', stat: stat, time: 'weekly' })
 		} date.setDate(1); if(lastUpdate < date.getTime()) {
 			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'monthly', stat)
-			updateLeaderboards({ stat: stat, time: 'monthly' })
+			updateLive({ type: 'leaderboard', stat: stat, time: 'monthly' })
 		} date.setMonth(0); if(lastUpdate < date.getTime()) {
 			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'annual', stat)
-			updateLeaderboards({ stat: stat, time: 'annual' })
+			updateLive({ type: 'leaderboard', stat: stat, time: 'annual' })
 		}
 	}
 	Tools.setSafe(data['Leveling'].stats, Date.now(), member, 'lastUpdate')
@@ -518,40 +528,45 @@ function updateVoice(member, isRecording) {
 	}
 }
 
-function updateLeaderboards(filter) {
+async function updateLive(filter) {
 	let removed = []
-	for(const lb of module.exports.get('level.leaderboards').filter((lb) => {
-		if(Date.now() - lb.update < 5000) return false
+	for(const lb of data['Leveling'].live.filter((lb) => {
+		if(lb.update !== undefined && Date.now() - lb.update < 5000) return false
 		for(const key of Object.keys(filter)) if(filter[key] !== lb[key]) return false
 		return true
-	})) {
-		lb.update = Date.now()
-		let leaderboard = module.exports.get(`level.leaderboard.0.${lb.stat}.${lb.time}`).slice(1, lb.count+1)
-		let embed = {
-			title: 'Leveling System!',
-			description: `Welcome to the server's leveling system! Stay active to earn points and level up!
-
-						> To get started, you don't really need to think much. I'll reward you points when you send messages or spend time in voice chats. It's as simple as that!
-						
-						> Of course, there are some other cool ways you can earn points as well, whether by inviting people, bumping our server with <@!302050872383242240>, or with the \`{prefix}daily\` command. But if you're new, just relax and have fun :)
-						
-						——————
-
-						**Live ${['','Daily','Weekly','Monthly','Annual'][['allTime','daily','weekly','monthly','annual'].indexOf(lb.time)]}` +
-		`${['','Messaging','Voice Chat','Reputation','Bumping','Counting','Invite'][['points','messages','voice','rep','bumps','counting','invite'].indexOf(lb.stat)]} Leaderboard**`,
-			timestamp: lb.update
-		}
-		Tools.getMessage(client, lb.channel, lb.message).then((message) => {
-			if(message === undefined) return removed.push({ channel: lb.channel, message: lb.message })
-			Tools.pageList(message, -1, lb.count, leaderboard, embed)
-		})
+	}).reverse()) {
+		let message = await Tools.getMessage(client, lb.channel, lb.message)
+		if(message === undefined) continue
+		if(lb.type === 'leaderboard') {
+			lb.update = Date.now()
+			message.edit('', {embed: module.exports.replaceEmbed({
+				title: 'Leveling System!',
+				timestamp: lb.update,
+				description: `Welcome to the server's leveling system! Stay active to earn points and level up!
+	
+							> To get started, you don't really need to think much. I'll reward you points when you send messages or spend time in voice chats. It's as simple as that!
+							
+							> Of course, there are some other cool ways you can earn points as well, whether by inviting people, bumping our server with <@!302050872383242240>, or with the \`{prefix}daily\` command. But if you're new, just relax and have fun :)`,
+				fields: [{
+					name: ['','Daily','Weekly','Monthly','Annual'][['allTime','daily','weekly','monthly','annual'].indexOf(lb.time)] + ' ' +
+						['','Messaging','Voice Chat','Reputation','Bumping','Counting','Invite'][['points','messages','voice','rep','bumps','counting','invite'].indexOf(lb.stat)] + ' Leaderboard',
+					value: module.exports.get(`level.leaderboard.0.${lb.stat}.${lb.time}`).slice(1, lb.count+1).join('\n'),
+					inline: true,
+				}, {
+					name: 'All Time ' + ['','Messaging','Voice Chat','Reputation','Bumping','Counting','Invite'][['points','messages','voice','rep','bumps','counting','invite'].indexOf(lb.stat)] + ' Leaderboard',
+					value: module.exports.get(`level.leaderboard.0.${lb.stat}.allTime`).slice(1, lb.count+1).join('\n'),
+					inline: true,
+				}]
+			})})
+		} else if(lb.type === 'log') {
+			message.edit('', {embed: module.exports.replaceEmbed({
+				description: `{level.log.${lb.num}}`,
+				timestamp: module.exports.get(`level.log.${lb.num}`).timestamp
+			})})
+		} else message.edit('Something went wrong...')
+		await Tools.wait(1000)
 	}
-	for(const lb in removed) module.exports.set(`level.leaderboard.remove.${lb.channel}.${lb.message}`)
-}
-
-
-function logStat(message) {
-
+	for(const lb in removed) module.exports.set(`level.live.leaderboard.remove.${lb.channel}.${lb.message}`)
 }
 
 

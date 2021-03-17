@@ -40,15 +40,12 @@ client.on('message', async message => {
 	if(Data.get(`disabled.${message.channel.id}`)) return
 	message.content = message.content.trim()
 
-	if(message.channel.type === 'text' && Data.get(`member.${message.member.id}.joinDate`) == 0) {
-        Data.set(`member.${message.member.id}.join`)
-	}
-
 	if(message.channel.type === 'text') {
+		if(Data.get(`member.${message.member.id}.joinDate`) == 0) Data.set(`member.${message.member.id}.join`)
 		Commands.call('level', message)
 		if(Data.get(`counting.${message.channel.id}`)) return Commands.call('count', message)
-		Commands.call('react', message)
-	} 
+		if(message.author.id !== client.user.id) Commands.call('react', message)
+	}
 
 	if(message.author.id === client.user.id) return
 

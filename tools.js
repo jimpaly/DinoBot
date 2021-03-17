@@ -424,6 +424,12 @@ module.exports = {
 		}
 	},
 
+	wait(milliseconds) {
+		return new Promise(function(resolve) {
+			setTimeout(resolve, milliseconds);
+		});
+	},
+
 	/**
 	 * Adds a postfix to a number (1st, 2nd, 3rd...)
 	 * @param {int} num The number to add a postfix to

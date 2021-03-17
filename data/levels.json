@@ -5,11 +5,25 @@
     "config": {
         "channel": "",
         "disabled": [],
-        "levels": [],
+        "levels": [
+            20,
+            50,
+            100,
+            150,
+            200,
+            400,
+            600,
+            800,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+        ],
         "messaging": {
             "points": {
-                "min": 5,
-                "max": 15
+                "min": 10,
+                "max": 50
             },
             "cooldown": 0
         },
@@ -40,10 +54,7 @@
         "counting": 50,
         "invite": 50
     },
-    "live": {
-        "leaderboards": [],
-        "logs": []
-    },
-    "updates": [],
+    "live": [],
+    "log": [],
     "stats": {}
 }
