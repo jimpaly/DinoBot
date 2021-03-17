@@ -7,18 +7,19 @@
 		  ██████  ██ ██   ████  ██████  ██████   ██████     ██    
 */
 
+// Start Discord client
 const Discord = require('discord.js')
+const intents = ['GUILDS', 'GUILD_MESSAGES', 'DIRECT_MESSAGES', 'GUILD_MESSAGE_REACTIONS', 'DIRECT_MESSAGE_REACTIONS', 'GUILD_VOICE_STATES', 'GUILD_INVITES', 'GUILD_MEMBERS']
+const partials = ['MESSAGE', 'GUILD_MEMBER'] 
+const client = new Discord.Client({ ws: { intents: intents }, partials: partials })
+module.exports.client = client
+
 const Data = require('./data')
 const Commands = require('./commands')
 const Tools = require('./tools')
 const invitesCache = {}
 
-// Start Discord client  partials: ['MESSAGE', 'REACTION'] 
-const intents = ['GUILDS', 'GUILD_MESSAGES', 'DIRECT_MESSAGES', 'GUILD_MESSAGE_REACTIONS', 'DIRECT_MESSAGE_REACTIONS', 'GUILD_VOICE_STATES', 'GUILD_INVITES', 'GUILD_MEMBERS']
-const partials = ['MESSAGE', 'GUILD_MEMBER'] 
-const client = new Discord.Client({ ws: { intents: intents }, partials: partials })
 client.login(Data.get('token'))
-
 
 // When the bot starts...
 client.on('ready', () => {
@@ -43,8 +44,13 @@ client.on('message', async message => {
         Data.set(`member.${message.member.id}.join`)
 	}
 
-	
-	if(message.channel.type === 'text') Commands.call('level', message)
+	console.log(message.content)
+
+	if(message.channel.type === 'text') {
+		Commands.call('level', message)
+		if(Data.get(`counting.${message.channel.id}`)) return Commands.call('count', message)
+		Commands.call('react', message)
+	} 
 
 	if(message.author.id === client.user.id) return
 
@@ -53,12 +59,7 @@ client.on('message', async message => {
 		args = message.content.slice(Data.get('prefix').length).trim().split(/\s+/)
 	} else if(message.content.startsWith('<@!'+client.user.id+'>')) {
 		args = message.content.slice(client.user.id.length+4).trim().split(/\s+/)
-	} else {
-		if(message.channel.type === 'text') {
-			if(Data.get(`counting.${message.channel.id}`)) Commands.call('count', message)
-			else Commands.call('react', message)
-		} return
-	}
+	} else return
 
 	if(message.author.bot) return
 	if(message.author.id === Data.get('developer') && Commands.dev(message, args)) return

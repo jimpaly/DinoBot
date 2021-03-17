@@ -1,5 +1,6 @@
 const fs = require('fs')
 const private = require('./private.json')
+const client = require('./bot').client
 
 // Load data
 const data = {}
@@ -75,6 +76,8 @@ module.exports = {
 			case 'level.counting': return data['Leveling'].config.counting
 			case 'level.invite': return data['Leveling'].config.invite
 			case 'level.members': return Object.keys(data['Leveling'].stats)
+			case 'level.leaderboards': return data['Leveling'].live.leaderboards
+			case 'level.logs': return data['Leveling'].live.logs
 			case 'counting': return data['Counting'].channel
 			case 'text': return data['Text'].users
 		}
@@ -107,6 +110,42 @@ module.exports = {
 		if(/^member\.((?!\.).)+\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
 		if(/^member\.((?!\.).)+\.latest\.(points|voice|daily|rep)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
 		if(/^member\.((?!\.).)+\.latest\.(repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, "", 'latest', args[3])
+		if(/^level\.leaderboard\.((?!\.).)+\.((?!\.).)+\.((?!\.).)+(|\.((?!\.).)+)$/.test(name)) {
+			let stat = args[3], time = args[4], option = args[5]
+			let memberPlace = ''
+			let leaderboard = this.get('level.members').map((otherMember) => {
+				let otherStat = this.get(`member.${otherMember}.${stat}.${time}`)
+				if(stat === 'rep') {
+					if(option === 'given') otherStat = otherStat.given
+					else if(option === 'recieved') otherStat = otherStat.recieved
+					else otherStat = otherStat.recieved - otherStat.given
+				} else if(stat === 'invite') {
+					if(option === 'current') otherStat = otherStat.joined - otherStat.left
+					else if(option === 'stayed') otherStat = otherStat.joined - otherStat.left - otherStat.returned
+					else otherStat = otherStat.joined
+				}
+				return {
+					member: otherMember,
+					stat: otherStat
+				}
+			}).sort((a, b) => b.stat - a.stat).map((memberStat, index) => {
+				// TODO: optimize by taking advantage of replaceEmbed (or is this really optimizing?)
+				let statStr = memberStat.stat+''
+				if(stat === 'voice') statStr = Tools.durationToStr(memberStat.stat, 1, 2)
+				let ret = `${index+1}. <@!${memberStat.member}> - ${statStr} `
+				ret += [`points`, 'messages', '', 
+					option === undefined ? '' : option, 'bumps', 'counts', 'members']
+					[['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? ''
+				if(stat === 'points' && time === 'allTime') ret += ` - lvl ${this.get(`member.${memberStat.member}.level`)}`
+				if(memberStat.member === args[2]) {
+					memberPlace = ret
+					return `**${ret}**`
+				} 
+				return ret
+			})
+			leaderboard.unshift(memberPlace)
+			return leaderboard
+		}
 
 		// Profiles
 		let profile = data['Profiles'].profiles[args[1]]
@@ -182,6 +221,7 @@ module.exports = {
 				} 
 			}
 		} else if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting)(|\.add)$/.test(name)) {
+			updateLeaderboards({ stat: args[2] })
 			for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual']) {
 				if(args[3] === 'add') {
 					if(args[2] === 'rep') {
@@ -214,6 +254,29 @@ module.exports = {
 			data['Leveling'].config.levels[parseInt(args[2])] = value
 		} else if(/^level\.daily\.((?!\.).)+$/.test(name)) {
 			data['Leveling'].config.daily[parseInt(args[2])] = value
+		} else if(/^level\.leaderboard\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
+			let exists = false
+			for(const lb of this.get('level.leaderboards')) {
+				if(lb.channel === args[2] && lb.message === args[3]) {
+					Tools.paste(lb, value)
+					updateLeaderboards(lb)
+					exists = true
+					break
+				}
+			}
+			if(!exists) {
+				data['Leveling'].live.leaderboards.push(Tools.paste({
+					channel: args[2], message: args[3], update: 0
+				}, value))
+				updateLeaderboards({ channel: args[2], message: args[3] })
+			}
+		} else if(/^level\.leaderboard\.remove\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
+			let lbs = this.get('level.leaderboards')
+			for(let i = lbs.length-1; i >= 0; i--) {
+				if(lbs[i].channel === args[3] && lbs[i].message === args[4]) {
+					lbs.splice(i, 1)
+				}
+			}
 		} else {
 			switch(name) {
 				case 'level.messaging.cooldown': data['Leveling'].config.messaging.cooldown = value; break
@@ -280,8 +343,6 @@ module.exports = {
 		if(member.id === private.developer) return true
 		return false
 	},
-
-
 
 };
 
@@ -402,10 +463,19 @@ function resetStats(member) {
 	let lastUpdate = Tools.getSafe(data['Leveling'].stats, Date.now(), member, 'lastUpdate'); 
 	for(const stat of ['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite']) {
 		let date = new Date()
-		date.setHours(0, 0, 0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'daily', stat)
-		Tools.setDay(date); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'weekly', stat)
-		date.setDate(1); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'monthly', stat)
-		date.setMonth(0); if(lastUpdate < date.getTime()) Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'annual', stat)
+		date.setHours(0, 0, 0); if(lastUpdate < date.getTime()) {
+			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'daily', stat)
+			updateLeaderboards({ stat: stat, time: 'daily' })
+		} Tools.setDay(date); if(lastUpdate < date.getTime()) {
+			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'weekly', stat)
+			updateLeaderboards({ stat: stat, time: 'weekly' })
+		} date.setDate(1); if(lastUpdate < date.getTime()) {
+			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'monthly', stat)
+			updateLeaderboards({ stat: stat, time: 'monthly' })
+		} date.setMonth(0); if(lastUpdate < date.getTime()) {
+			Tools.setSafe(data['Leveling'].stats, getDefault(stat), member, 'annual', stat)
+			updateLeaderboards({ stat: stat, time: 'annual' })
+		}
 	}
 	Tools.setSafe(data['Leveling'].stats, Date.now(), member, 'lastUpdate')
 }
@@ -449,6 +519,42 @@ function updateVoice(member, isRecording) {
 		module.exports.set(`member.${member}.voice.add`, now - latest, false)
 		module.exports.set(`member.${member}.points.add`, pointsGain, false)
 	}
+}
+
+function updateLeaderboards(filter) {
+	let removed = []
+	for(const lb of module.exports.get('level.leaderboards').filter((lb) => {
+		if(Date.now() - lb.update < 5000) return false
+		for(const key of Object.keys(filter)) if(filter[key] !== lb[key]) return false
+		return true
+	})) {
+		lb.update = Date.now()
+		let leaderboard = module.exports.get(`level.leaderboard.0.${lb.stat}.${lb.time}`).slice(1, lb.count+1)
+		let embed = {
+			title: 'Leveling System!',
+			description: `Welcome to the server's leveling system! Stay active to earn points and level up!
+
+						> To get started, you don't really need to think much. I'll reward you points when you send messages or spend time in voice chats. It's as simple as that!
+						
+						> Of course, there are some other cool ways you can earn points as well, whether by inviting people, bumping our server with <@!302050872383242240>, or with the \`{prefix}daily\` command. But if you're new, just relax and have fun :)
+						
+						——————
+
+						**Live ${['','Daily','Weekly','Monthly','Annual'][['allTime','daily','weekly','monthly','annual'].indexOf(lb.time)]}` +
+		`${['','Messaging','Voice Chat','Reputation','Bumping','Counting','Invite'][['points','messages','voice','rep','bumps','counting','invite'].indexOf(lb.stat)]} Leaderboard**`,
+			timestamp: lb.update
+		}
+		Tools.getMessage(client, lb.channel, lb.message).then((message) => {
+			if(message === undefined) return removed.push({ channel: lb.channel, message: lb.message })
+			Tools.pageList(message, -1, lb.count, leaderboard, embed)
+		})
+	}
+	for(const lb in removed) module.exports.set(`level.leaderboard.remove.${lb.channel}.${lb.message}`)
+}
+
+
+function logStat(message) {
+
 }
 
 

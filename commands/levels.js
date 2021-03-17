@@ -240,6 +240,54 @@ module.exports = {
                 }
             }
         }, {
+            name: 'Live Stats',
+            alias: ['livestats', 'livestat', 'livelevels', 'liveleveling'],
+            description: `Creates messages that are updated live as the leveling system goes on.
+                        The \`<message>\` can be a #channel+messageID, messageID(for current channel), or message url
+                        Refer to \`{prefix}help leaderboard\` for \`<category>\` and \`<time-period>\``,
+            usage: [
+                ['liveStats leaderboard <category> <time-period> <count>', `Creates a live leaderboard of a specific category with a certain number of people`],
+                ['liveStats leaderboard <options...> <message>', 'Makes one of my old messages into a live leaderboard'],
+                ['liveStats leaderboard remove <message>', 'Stop updating a leaderboard'],
+                ['liveStats leaderboard list', 'List all the live leaderboards I\'m updating'],
+                ['liveStats log <log-number>', 'Logs different actions that got people points'],
+                ['liveStats log <log-number> <message>', 'Makes one of my old messages into a log message']
+            ],
+            public: false,
+            developer: false,
+            guildOnly: true,
+            async execute(message, args) {
+                if(['leaderboard', 'lb', 'liveleaderboard', 'livelb'].includes(args[0])) {
+                    if(['remove', 'rem', 'r', 'delete', 'del', 'd', 'dlt'].includes(args[1])) {
+                        if(args.length < 3) return Tools.fault(message.channel, 'Give me a message!')
+                        let msg = Tools.getMessageID(message, args[2], args[3])
+                        Tools.success(message.channel, `I will stop updating the leaderboard on [that message](${Tools.getURL(message.guild, msg[0], msg[1])})!`)
+                        return Data.set(`level.leaderboard.remove.${msg[0]}.${msg[1]}`)
+                    } else if(['list', 'lst', 'l', 'all', 'show'].includes(args[1])) {
+                        return message.channel.send({embed: Data.replaceEmbed({
+                            title: 'Live Leaderboards',
+                            description: Data.get('level.leaderboards').map((lb) => {
+                                return `<#${lb.channel}> [link](${Tools.getURL(message.guild, lb.channel, lb.message)}) - ${lb.stat} ${lb.time}`
+                            }).join('\n')
+                        })})
+                    }
+                    let stat = getStatName(args[1]) ?? 'points'
+                    let time = getTimePeriodName(args[2]) ?? 'weekly'
+                    let count = Math.min(50, Math.max(1, parseInt(args[3]))) || 10
+                    let msg
+                    if(args[4] === undefined) msg = await message.channel.send('Loading...')
+                    else {
+                        msg = await Tools.findMessage(message, args[4], args[5])
+                        if(msg === undefined) return Tools.fault(message.channel, `I couldn't find that message!`)
+                        if(!msg.editable) return Tools.fault(message.channel, `I can't edit that [message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})`)
+                        Tools.success(message.channel, `I will update the new live leaderboard at [that message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})!`)
+                    }
+                    Data.set(`level.leaderboard.${msg.channel.id}.${msg.id}`, { stat: stat, time: time, count: count })
+                } else if(['log', 'logging'].includes(args[0])) {
+
+                }
+            }
+        }, {
             name: 'Leveling Configuration',
             alias: ['levelconfig', 'lvlconfig', 'levelsettings', 'lvlsettings'],
             description: `Set different leveling settings (cooldowns are in minutes)`,
@@ -481,36 +529,7 @@ function showStat(channel, member, stat) {
 }
 async function showLeaderboard(channel, member, stat, time, option) { // TODO: Add daily steaks
     const message = await channel.send('Loading leaderboard...')
-    let memberPlace = {}
-    let leaderboard = Data.get('level.members').map((otherMember) => {
-        let otherStat = Data.get(`member.${otherMember}.${stat}.${time}`)
-        if(stat === 'rep') {
-            if(option === 'given') otherStat = otherStat.given
-            else if(option === 'recieved') otherStat = otherStat.recieved
-            else otherStat = otherStat.recieved - otherStat.given
-        } else if(stat === 'invite') {
-            if(option === 'current') otherStat = otherStat.joined - otherStat.left
-            else if(option === 'stayed') otherStat = otherStat.joined - otherStat.left - otherStat.returned
-            else otherStat = otherStat.joined
-        }
-        return {
-            member: otherMember,
-            stat: otherStat
-        }
-    }).sort((a, b) => b.stat - a.stat).map((memberStat, index) => {
-        // TODO: optimize by taking advantage of replaceEmbed (or is this really optimizing?)
-        let statStr = memberStat.stat+''
-        if(stat === 'voice') statStr = Tools.durationToStr(memberStat.stat, 1, 2)
-        let ret = `${index+1}. <@!${memberStat.member}> - ${statStr} `
-        ret += [`points - lvl ${Data.get(`member.${memberStat.member}.level`)}`, 'messages', '', 
-            option === undefined ? '' : option, 'bumps', 'counts', 'members']
-            [['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? ''
-        if(memberStat.member === member.id) {
-            memberPlace = ret
-            return `**${ret}**`
-        } 
-        return ret
-    })
+    let leaderboard = Data.get(`level.leaderboard.${member.id}.${stat}.${time}.${option}`)
     let embed = {
         title: (['Daily', 'Weekly', 'Monthly', 'Annual'][['daily', 'weekly', 'monthly', 'annual'].indexOf(time)] ?? '') + 
                 ' ' + (['Leveling', 'Messaging', 'Voice Chat', 'Reputation', 'Disboard Bumping', 'Counting Game', 'Invite']
@@ -526,11 +545,11 @@ async function showLeaderboard(channel, member, stat, time, option) { // TODO: A
                 option === 'stayed' ? 'Now only counting invites who never left' :
                 `Hint: to not count invites who aren't in the server, 
                 try \`{prefix}leaderboard invite current|stayed ${time}\`` : ''}
-            **${memberPlace}**
+            **${leaderboard[0]}**
             ——————————`,
         timestamp: Date.now()
     }
-    Tools.pageList(message, -1, 10, leaderboard, embed)
+    Tools.pageList(message, -1, 10, leaderboard.slice(1), embed)
 }
 
 async function listInvites(channel, member, category) {

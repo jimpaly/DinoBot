@@ -29,6 +29,12 @@ module.exports = {
 		})})
         console.error(err)
     },
+	success(channel, message) {
+        channel.send({embed: Data.replaceEmbed({
+			title: 'Success!',
+			description: message
+		})})
+	},
 
 
 	pageList(message, page, count = 10, list, content = {}) {
@@ -121,6 +127,30 @@ module.exports = {
 		if(message.channel.type !== 'text') return
 		members = await message.guild.members.fetch({ query: arg, limit: 1 })
 		if(members.first() !== undefined) return members.first()
+	},
+
+	getMessageID(message, arg1, arg2) {
+		if(arg1 === undefined) return
+		if(arg1.includes('discord.com/channels')) {
+			args = arg1.replace(/\//g, ' ').trim().split(/ +/)
+			arg1 = args[args.length-2]
+			arg2 = args[args.length-1]
+		} else if(arg2 === undefined) {
+			arg2 = arg1
+			arg1 = message.channel.id
+		}
+		return [arg1.replace(/[^0-9]/g, ''), arg2.replace(/[^0-9]/g, '')]
+	},
+	findMessage(message, arg1, arg2) {
+		let args = this.getMessageID(message, arg1, arg2)
+		if(args !== undefined) return this.getMessage(message.client, args[0], args[1])
+	},
+	async getMessage(client, channelID, messageID) {
+		let channel = await client.channels.fetch(channelID).catch(() => {})
+		return await channel.messages.fetch(messageID).catch(() => {})
+	},
+	getURL(guild, channelID, messageID) {
+		return 'https://discord.com/channels/'+guild.id+'/'+channelID+'/'+messageID;
 	},
 	async getInvites(guild) {
 		let invites = {}
@@ -407,16 +437,5 @@ module.exports = {
 	addSign(num) {
 		return num<0 ? `${num}` : `+${num}`;
 	},
-
-	getMessage(client, channel, message, callback) {
-		client.channels.fetch(channel).then(ch => {
-			ch.messages.fetch(message).then(msg => {
-				callback(msg);
-			});
-		});
-	},
-	getURL(guild, channel, message) {
-		return 'https://discordapp.com/channels/'+guild+'/'+channel+'/'+message;
-	}
 
 };

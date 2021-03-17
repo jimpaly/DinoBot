@@ -40,5 +40,10 @@
         "counting": 50,
         "invite": 50
     },
+    "live": {
+        "leaderboards": [],
+        "logs": []
+    },
+    "updates": [],
     "stats": {}
 }
