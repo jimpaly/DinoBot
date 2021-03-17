@@ -407,6 +407,12 @@ module.exports = {
 		return Math.round(diff/1800000)/2
 	},
 
+	getLevel(levels, points) {
+		let level = levels.findIndex((pts) => points < pts)
+		if(level < 0) return levels.length
+		return level
+	},
+
 	align(str, length, alignment = 'center') {
 		const leftover = Math.max(0, length - str.length)
 		if(alignment  === 'left') {

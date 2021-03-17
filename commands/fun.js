@@ -56,7 +56,8 @@ module.exports = {
 
 		if(message.bot) return message.delete().catch(error => {})
 
-		Data.set(`member.${message.author.id}.counting.add`, 1)
+		Data.set(`member.${message.author.id}.counting.add`, 1, false)
+		Data.set(`member.${message.author.id}.points.add`, Data.get('level.counting'))
 
 		let messages = await message.channel.messages.fetch({limit: 2})
 		let lastMessage = messages.last()
@@ -76,7 +77,8 @@ module.exports = {
 	},
 	async uncount(message) {
 		if(message.member == null) return
-		Data.set(`member.${message.author.id}.counting.add`, -1)
+		Data.set(`member.${message.author.id}.counting.add`, -1, false)
+		Data.set(`member.${message.author.id}.points.add`, -Data.get('level.counting'))
 	},
 	react(message) {
 

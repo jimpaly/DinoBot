@@ -292,11 +292,12 @@ module.exports = {
             alias: ['levelconfig', 'lvlconfig', 'levelsettings', 'lvlsettings'],
             description: `Set different leveling settings (cooldowns are in minutes)`,
             usage: [
+                ['levelConfig levels <level> <points>', `Configure how much points it takes to get to a certain level`]
                 ['levelConfig show|list', `Show all leveling settings`],
                 ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
                 ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
                 ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc'],
-                ['levelConfig daily <day> <points>', 'Set the daily rewards. <day> is a number from 0 to 6. Every 7 days, rep will be rewarded in place of points'],
+                ['levelConfig daily <day> <points>', 'Set the daily rewards. <day> is a number from 1 to 7. Every 7 days, rep will be rewarded in place of points'],
                 ['levelConfig rep [give points] [recieve points] [cooldown]', 'Set points gained from giving or recieving rep'],
                 ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
                 ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
@@ -312,10 +313,25 @@ module.exports = {
                         description: `
                         **Messaging:** {level.messaging} every {level.messaging.cooldown} sending messages
                         **Voice:** {level.voice} every {level.voice.cooldown} in a voice chat with another human
+                        **Rep:** give: {level.rep.give}, recieve: {level.rep.recieve}, {level.rep.cooldown}
                         **Bump:** {level.bump} for each Disboard bump through the command
                         **Counting:** {level.counting} for each correct count in {counting}
                         **Invite:** {level.invite} for each invite (points removed if invite leaves)`
                     })})
+                } else if(['levels', 'level', 'points'].includes(args[0])) {
+                    if(Tools.isNumber(args[1]) && parseInt(args[1]) < 200) {
+                        let oldLevels = Tools.clone(Data.get('level.levels'))
+                        args.slice(2).forEach((arg, idx) => { if(Tools.isNumber(arg)) {
+                            Data.set(`level.levels.${Math.max(0, Math.min(200, parseInt(args[1])+idx-1))}`, parseInt(arg), false)
+                        }})
+                        Data.get('level.members').forEach((member) => {
+                            let points = Data.get(`member.${member}.points`)
+                            let level = Tools.getLevel(oldLevels, points)
+                            Data.set(`member.${member}.points`, Data.get(`level.levels.${level-1}`)+points-oldLevels[level-1], false)
+                        })
+                        Data.save('Leveling')
+                    }
+                    message.channel.send(Data.get('level.levels').map((points, level) => `\`${level+1}-${points}\``).join(' | ') || ';-;')
                 } else if(['message', 'm', 'messaging', 'texting', 'text'].includes(args[0])) {
                     if(Tools.isNumber(args[1])) Data.set('level.messaging', { min: parseInt(args[1]) })
                     if(Tools.isNumber(args[2])) Data.set('level.messaging', { max: parseInt(args[2]) })
@@ -327,7 +343,7 @@ module.exports = {
                     if(Tools.isNumber(args[3])) Data.set('level.voice.cooldown', parseInt(args[3]))
                     message.channel.send(Data.replace('Voice settings set to: {level.voice}, {level.voice.cooldown}'))
                 } else if(['daily', 'reward', 'rewards', 'streak', 'streaks'].includes(args[0])) {
-                    if(Tools.isNumber(args[1]) && Tools.isNumber(args[2])) Data.set(`level.daily.${args[1]}`, parseInt(args[2]))
+                    if(Tools.isNumber(args[1]) && Tools.isNumber(args[2])) Data.set(`level.daily.${Math.max(0, Math.min(6, args[1]-1))}`, parseInt(args[2]))
                     message.channel.send(Data.replace('Daily Rewards set to: {level.daily}'))
                 } else if(['rep', 'reputation', 'reps'].includes(args[0])) {
                     if(Tools.isNumber(args[1])) Data.set('level.rep.give', parseInt(args[1]))

@@ -44,8 +44,6 @@ client.on('message', async message => {
         Data.set(`member.${message.member.id}.join`)
 	}
 
-	console.log(message.content)
-
 	if(message.channel.type === 'text') {
 		Commands.call('level', message)
 		if(Data.get(`counting.${message.channel.id}`)) return Commands.call('count', message)

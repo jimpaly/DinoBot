@@ -76,6 +76,7 @@ module.exports = {
 			case 'level.counting': return data['Leveling'].config.counting
 			case 'level.invite': return data['Leveling'].config.invite
 			case 'level.members': return Object.keys(data['Leveling'].stats)
+			case 'level.levels': return data['Leveling'].config.levels
 			case 'level.leaderboards': return data['Leveling'].live.leaderboards
 			case 'level.logs': return data['Leveling'].live.logs
 			case 'counting': return data['Counting'].channel
@@ -107,7 +108,7 @@ module.exports = {
 			return latest.getTime() - Date.now() - offset
 		} 
 		if(/^member\.((?!\.).)+\.invite\.(joined|left|returned)$/.test(name)) return Tools.getSafe(stats, [], 'allTime', 'invite', args[3])
-		if(/^member\.((?!\.).)+\.level$/.test(name)) return pointsToLevel(Tools.getSafe(stats, 0, 'allTime', 'points'))
+		if(/^member\.((?!\.).)+\.level$/.test(name)) return Tools.getLevel(this.get('level.levels'), Tools.getSafe(stats, 0, 'allTime', 'points'))
 		if(/^member\.((?!\.).)+\.latest\.(points|voice|daily|rep)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
 		if(/^member\.((?!\.).)+\.latest\.(repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, "", 'latest', args[3])
 		if(/^level\.leaderboard\.((?!\.).)+\.((?!\.).)+\.((?!\.).)+(|\.((?!\.).)+)$/.test(name)) {
@@ -222,8 +223,8 @@ module.exports = {
 			}
 		} else if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting)(|\.add)$/.test(name)) {
 			updateLeaderboards({ stat: args[2] })
-			for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual']) {
-				if(args[3] === 'add') {
+			if(args[3] === 'add') {
+				for(const category of ['allTime', 'daily', 'weekly', 'monthly', 'annual']) {
 					if(args[2] === 'rep') {
 						let oldVal = this.get(`member.${args[1]}.${args[2]}.${category}`)
 						Tools.setSafe(stats, { 
@@ -233,9 +234,9 @@ module.exports = {
 					} else {
 						Tools.setSafe(stats, this.get(`member.${args[1]}.${args[2]}.${category}`)+value, args[1], category, args[2])
 					}
-				} else {
-					Tools.setSafe(stats, value, args[1], category, args[2])
 				}
+			} else {
+				Tools.setSafe(stats, value, args[1], 'allTime', args[2])
 			}
 		} else if(/^member\.((?!\.).)+\.daily(|\.add)$/.test(name)) {
 			let highest = this.get(`member.${args[1]}.daily.highest`)
@@ -251,9 +252,12 @@ module.exports = {
 			if(args[3] === 'voice') updateVoice(args[1], value)
 			else Tools.setSafe(stats, value, args[1], 'latest', args[3])
 		} else if(/^level\.levels\.((?!\.).)+$/.test(name)) {
-			data['Leveling'].config.levels[parseInt(args[2])] = value
+			let levels = data['Leveling'].config.levels
+			levels[parseInt(args[2])] = value
+			levels[0] = levels[0] ?? 0
+			for(let i = 1; i < levels.length; i++) levels[i] = Math.max(levels[i] ?? 0, levels[i-1])
 		} else if(/^level\.daily\.((?!\.).)+$/.test(name)) {
-			data['Leveling'].config.daily[parseInt(args[2])] = value
+			data['Leveling'].config.daily[Math.max(0, Math.min(6, parseInt(args[2])))] = value
 		} else if(/^level\.leaderboard\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
 			let exists = false
 			for(const lb of this.get('level.leaderboards')) {
@@ -450,13 +454,6 @@ function replaceStr(str) {
     str = str.replace(/{text.(.*?)}/gi, (x) => data['Text'].users.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
     
     return str
-}
-
-function pointsToLevel(points) {
-    return Math.floor(points/100)
-}
-function levelToPoints(level) {
-    return level*100
 }
 
 function resetStats(member) {
