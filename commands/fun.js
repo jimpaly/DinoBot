@@ -41,13 +41,13 @@ module.exports = {
 			guildOnly: false,
 			execute(message, args) {
 				if(args.length < 1 || ['show', 'display'].includes(args[0])) {
-					sendStatus(message.channel, '', message.member);
+					sendStatus(message.channel, '', Tools.getAuthor(message));
 				} else if(['enable', 'on', 'true', 'yes'].includes(args[0])) {
-					Data.set(`text.enable`, message.member.id)
-					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${member.id}>`, member);
+					Data.set(`text.enable`, message.author.id)
+					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${message.author.id}>`, Tools.getAuthor(message));
 				} else if(['disable', 'off', 'false', 'no'].includes(args[0])) {
-					Data.set(`text.disable`, message.member.id)
-					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${member.id}>`, member);
+					Data.set(`text.disable`, message.author.id)
+					sendStatus(message.channel, `⬇️ I just updated your preferences!, <@${message.author.id}>`, Tools.getAuthor(message));
 				}
 			}
 		}
@@ -112,7 +112,7 @@ module.exports = {
 
 function sendStatus(channel, message, member) {
 	channel.send(message, { embed: Data.replaceEmbed({
-		title: `Reaction/Text Preference of ${member.displayName}`,
+		title: `Reaction/Text Preference of ${Tools.getName(member)}`,
 		description: `Reactions are {text.${member.id}} for you!`
 	})});
 }

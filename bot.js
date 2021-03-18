@@ -76,8 +76,6 @@ client.on('messageDeleteBulk', messages => {
 client.on('voiceStateUpdate', (oldState, newState) => {
 	if(!Data.get(`level.channel.${oldState.channel?.id}`)) oldState.channel = null
 	if(!Data.get(`level.channel.${newState.channel?.id}`)) newState.channel = null
-	console.log(oldState.channel)
-	console.log(newState.channel)
 	Commands.call('voice', [oldState, newState])
 })
 

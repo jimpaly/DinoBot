@@ -319,8 +319,8 @@ module.exports = {
 		// Text
 		didUpdate = true;
 		switch(name) {
-			case 'text.disable': data['Text'].users.push(value); break
-			case 'text.enable': data['Text'].users.splice(data['Text'].users.indexOf(value), 1); break
+			case 'text.disable': if(!data['Text'].users.includes(value)) data['Text'].users.push(value); break
+			case 'text.enable': if(data['Text'].users.includes(value)) data['Text'].users.splice(data['Text'].users.indexOf(value), 1); break
 			default: didUpdate = false
 		} if(didUpdate && save) return this.save('Text')
 	},
