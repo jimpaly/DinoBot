@@ -45,7 +45,7 @@ client.on('message', async message => {
 			Data.set(`member.${message.member.id}.join`, undefined, false)
 			if(message.author.bot) Data.set(`member.${message.member.id}.bot`, true)
 		}
-		Commands.call('level', message)
+		if(Data.get(`level.channel.${message.channel.id}`)) Commands.call('level', message)
 		if(Data.get(`counting.${message.channel.id}`)) return Commands.call('count', message)
 		if(message.author.id !== client.user.id) Commands.call('react', message)
 	}
@@ -74,6 +74,10 @@ client.on('messageDeleteBulk', messages => {
 })
 
 client.on('voiceStateUpdate', (oldState, newState) => {
+	if(!Data.get(`level.channel.${oldState.channel?.id}`)) oldState.channel = null
+	if(!Data.get(`level.channel.${newState.channel?.id}`)) newState.channel = null
+	console.log(oldState.channel)
+	console.log(newState.channel)
 	Commands.call('voice', [oldState, newState])
 })
 

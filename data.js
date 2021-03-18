@@ -87,6 +87,7 @@ module.exports = {
 		if(args[0] === 'disabled') return data['Configuration'].disabled.includes(args[1])
 
 		// Leveling
+		if(/^level\.channel\.((?!\.).)+$/.test(name)) return !data['Leveling'].config.disabled.includes(args[2])
 		if(/^level\.levels\.((?!\.).)+$/.test(name)) return data['Leveling'].config.levels[args[2]-1] ?? 0
 		if(/^level\.daily\.((?!\.).)+$/.test(name)) return data['Leveling'].config.daily[args[2]] ?? 0
 		if(/^level\.log\.((?!\.).)+$/.test(name)) return data['Leveling'].log[args[2]-1] ?? { message: '', timestamp: 0 }
@@ -260,6 +261,11 @@ module.exports = {
 		} else if(/^member\.((?!\.).)+\.latest\.(points|voice|daily|rep|repTo|repFrom)$/.test(name)) {
 			if(args[3] === 'voice') updateVoice(args[1], value)
 			else Tools.setSafe(stats, value, args[1], 'latest', args[3])
+		} else if(/^level\.channel\.((?!\.).)+$/.test(name)) {
+			let idx = data['Leveling'].config.disabled.indexOf(args[2])
+			if(args[2] === 'all') data['Leveling'].config.disabled = []
+			else if(value && idx>=0) data['Leveling'].config.disabled.splice(idx, 1)
+			else if(!value && idx<0) data['Leveling'].config.disabled.push(args[2])
 		} else if(/^level\.levels\.((?!\.).)+$/.test(name)) {
 			let levels = data['Leveling'].config.levels
 			levels[parseInt(args[2])] = value
@@ -267,13 +273,6 @@ module.exports = {
 			for(let i = 1; i < levels.length; i++) levels[i] = Math.max(levels[i] ?? 0, levels[i-1])
 		} else if(/^level\.daily\.((?!\.).)+$/.test(name)) {
 			data['Leveling'].config.daily[Math.max(0, Math.min(6, parseInt(args[2])))] = value
-		} else if(/^level\.live\.remove\.((?!\.).)+\.((?!\.).)+$/.test(name)) {
-			let lbs = this.get('level.live')
-			for(let i = lbs.length-1; i >= 0; i--) {
-				if(lbs[i].channel === args[3] && lbs[i].message === args[4]) {
-					lbs.splice(i, 1)
-				}
-			}
 		} else {
 			switch(name) {
 				case 'level.channel': data['Leveling'].config.logging.channel = value; break
@@ -554,7 +553,8 @@ async function updateLeaderboard(edit = true) {
 	})
 	let channelID = data['Leveling'].config.logging.channel
 	let messageID = data['Leveling'].config.logging.leaderboard
-	let channel = await client.channels.fetch(channelID)
+	let channel = await client.channels.fetch(channelID).catch(() => {})
+	if(channel === undefined) return
 	let message = await channel.messages.fetch(messageID).catch(() => {})
 	if(edit && message !== undefined) {
 		message.edit('', {embed: embed})

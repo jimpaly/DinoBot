@@ -4,9 +4,9 @@
     "file": "levels.json",
     "config": {
         "logging": {
-            "channel": "816758603645714563",
-            "leaderboard": "821914919121059872",
-            "lastUpdate": 1616031605303
+            "channel": "",
+            "leaderboard": "",
+            "lastUpdate": 0
         },
         "disabled": [],
         "levels": [],
@@ -15,14 +15,14 @@
                 "min": 10,
                 "max": 50
             },
-            "cooldown": 0
+            "cooldown": 1
         },
         "voice": {
             "points": {
-                "min": 5,
-                "max": 15
+                "min": 10,
+                "max": 50
             },
-            "cooldown": 0
+            "cooldown": 1
         },
         "daily": [
             100,
@@ -35,14 +35,14 @@
         ],
         "rep": {
             "points": {
-                "give": 50,
-                "recieve": 250
+                "give": 200,
+                "recieve": 1000
             },
-            "cooldown": 0
+            "cooldown": 30
         },
-        "bump": 50,
-        "counting": 50,
-        "invite": 50
+        "bump": 500,
+        "counting": 20,
+        "invite": 2000
     },
     "stats": {}
 }

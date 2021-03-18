@@ -254,7 +254,7 @@ module.exports = {
                 ['levelConfig log <#channel>', `Set the channel used for logging and posting the live leaderboard`],
                 ['levelConfig levels <level> <points>', `Configure how much points it takes to get to a certain level`],
                 ['levelConfig show|list', `Show all leveling settings`],
-                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
+                ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels members can gain points in'],
                 ['levelConfig message|voice [min points] [max points] [cooldown]', 'Set points gained from text messaging or spending time in vc'],
                 ['levelConfig daily <day> <points>', 'Set the daily rewards. <day> is a number from 1 to 7. Every 7 days, rep will be rewarded in place of points'],
                 ['levelConfig rep [give points] [recieve points] [cooldown]', 'Set points gained from giving or recieving rep'],
@@ -292,6 +292,55 @@ module.exports = {
                         Data.save('Leveling')
                     }
                     message.channel.send(Data.get('level.levels').map((points, level) => `\`${level+1}-${points}\``).join(' | ') || ';-;')
+                } else if(['channel', 'channels'].includes(args[0])) {
+                    let status
+                    if(['enable', 'on'].includes(args[1])) {
+                        if(['all'].includes(args[2])) {
+                            Data.set(`level.channel.all`, true)
+                        } else if(message.mentions.channels.size > 0) {
+                            Data.set(`level.channel.${message.mentions.channels.first().id}`, true)
+                        } else if(message.guild.channels.cache.has(args[2])) {
+                            Data.set(`level.channel.${args[2]}`, true)
+                        } else {
+                            return Tools.fault(message.channel, `I couldn't find that channel!`)
+                        }
+                    } else if(['disable', 'off'].includes(args[1])) {
+                        if(['all'].includes(args[2])) {
+                            message.guild.channels.cache.array().
+                                filter((channel) => ['text', 'news', 'voice'].includes(channel.type)).
+                                forEach((channel) => Data.set(`level.channel.${channel.id}`, false, false))
+                            Data.save('Leveling')
+                        } else if(message.mentions.channels.size > 0) {
+                            Data.set(`level.channel.${message.mentions.channels.first().id}`, false)
+                        } else if(message.guild.channels.cache.has(args[2])) {
+                            Data.set(`level.channel.${args[2]}`, false)
+                        } else {
+                            return Tools.fault(message.channel, `I couldn't find that channel!`)
+                        }
+                    }
+                    let channels = message.guild.channels.cache.array().sort((a, b) => a.position - b.position)
+                    message.channel.send({embed: Data.replaceEmbed({
+                        title: 'Leveling Enabled Channels',
+                        description: channels.filter((channel) => ['text', 'news', 'voice'].includes(channel.type) && channel.parent === null).map((channel) => {
+                            if(['text', 'news'].includes(channel.type)) {
+                                return `${Data.get(`level.channel.${channel.id}`) ? '🟢' : '🔴'} <#${channel.id}>`
+                            } else {
+                                return `${Data.get(`level.channel.${channel.id}`) ? '🟢' : '🔴'} 🔊${channel.name}`
+                            }
+                        }).join('\n'),
+                        fields: channels.filter((channel) => channel.type === 'category').map((channel) => { return {
+                            name: `${channel.name}`,
+                            inline: true,
+                            value: channel.children.array().sort((a, b) => a.position - b.position).
+                                filter((channel) => ['text', 'news', 'voice'].includes(channel.type)).map((channel) => {
+                                if(['text', 'news'].includes(channel.type)) {
+                                    return `${Data.get(`level.channel.${channel.id}`) ? '🟢' : '🔴'} <#${channel.id}>`
+                                } else {
+                                    return `${Data.get(`level.channel.${channel.id}`) ? '🟢' : '🔴'} 🔊${channel.name}`
+                                }
+                            }).join('\n')
+                        }})
+                    })})
                 } else if(['message', 'm', 'messaging', 'texting', 'text'].includes(args[0])) {
                     if(Tools.isNumber(args[1])) Data.set('level.messaging', { min: parseInt(args[1]) })
                     if(Tools.isNumber(args[2])) Data.set('level.messaging', { max: parseInt(args[2]) })
