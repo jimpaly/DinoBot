@@ -41,7 +41,10 @@ client.on('message', async message => {
 	message.content = message.content.trim()
 
 	if(message.channel.type === 'text') {
-		if(Data.get(`member.${message.member.id}.joinDate`) == 0) Data.set(`member.${message.member.id}.join`)
+		if(Data.get(`member.${message.member.id}.joinDate`) == 0) {
+			Data.set(`member.${message.member.id}.join`, undefined, false)
+			if(message.author.bot) Data.set(`member.${message.member.id}.bot`, true)
+		}
 		Commands.call('level', message)
 		if(Data.get(`counting.${message.channel.id}`)) return Commands.call('count', message)
 		if(message.author.id !== client.user.id) Commands.call('react', message)

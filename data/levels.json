@@ -3,23 +3,13 @@
     "description": "Data for the leveling system",
     "file": "levels.json",
     "config": {
-        "channel": "",
+        "logging": {
+            "channel": "816758603645714563",
+            "leaderboard": "821914919121059872",
+            "lastUpdate": 1616031605303
+        },
         "disabled": [],
-        "levels": [
-            20,
-            50,
-            100,
-            150,
-            200,
-            400,
-            600,
-            800,
-            1000,
-            1000,
-            1000,
-            1000,
-            1000
-        ],
+        "levels": [],
         "messaging": {
             "points": {
                 "min": 10,
@@ -54,7 +44,5 @@
         "counting": 50,
         "invite": 50
     },
-    "live": [],
-    "log": [],
     "stats": {}
 }

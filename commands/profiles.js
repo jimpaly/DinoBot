@@ -85,7 +85,8 @@ module.exports = {
         Data.save('Leveling')
 
         Data.set(`member.${member.id}.join`, inviter, false)
-		Data.set(`level.log`, `<@!${inviter}> got ${Data.get(`level.invite`)} points for inviting <@!${member.id}>!`)
+        if(member.user.bot) Data.set(`member.${member.id}.bot`, true, false)
+		Data.log(`<@!${inviter}> got ${Data.get(`level.invite`)} points for inviting <@!${member.id}>!`, inviter)
     },
     removeMember(member) {
 

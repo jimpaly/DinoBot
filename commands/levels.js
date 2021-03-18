@@ -103,6 +103,8 @@ module.exports = {
                             Tools.fault(message.channel, `You can't give rep to the same person twice in a row! Try someone else!`)
                         } else if(member.id === Data.get(`member.${message.author.id}.latest.repFrom`)) {
                             Tools.fault(message.channel, `Why are you giving the rep back to the person who gave it to you? Try someone else!`)
+                        } else if(member.id === message.author.id) {
+                            Tools.fault(message.channel, `You can't give rep to yourself!`)
                         } else {
                             let give = Data.get('level.rep.give')
                             let recieve = Data.get('level.rep.recieve')
@@ -112,7 +114,7 @@ module.exports = {
                             Data.set(`member.${member.id}.points.add`, recieve, false)
                             Data.set(`member.${message.author.id}.latest.repTo`, member.id, false)
                             Data.set(`member.${member.id}.latest.repFrom`, message.author.id, false)
-                            Data.set(`level.log`, `<@!${member.id}> got ${recieve} points from recieving a rep from <@!${message.author.id}>, who got ${give} points for their kindness!`)
+                            Data.log(`<@!${member.id}> got ${recieve} points from recieving a rep from <@!${message.author.id}>, who got ${give} points for their kindness!`, member.id)
                             Data.set(`member.${message.author.id}.latest.rep`, Date.now())
                             message.channel.send({embed: Data.replaceEmbed({
                                 title: 'Rep Given!',
@@ -232,11 +234,11 @@ module.exports = {
                         if(streak%7 < 6) {
                             Data.set(`member.${message.author.id}.points.add`, gain, false)
                             embed.description += Data.replace(`\nGained ${gain} point${gain == 1 ? '' : 's'}!`)
-                            Data.set(`level.log`, `<@!${message.author.id}> got ${gain} points for their daily reward!`)
+                            Data.log(`<@!${message.author.id}> got ${gain} points for their daily reward!`, message.author.id)
                         } else {
                             Data.set(`member.${message.author.id}.rep.add`, { recieved: gain }, false)
                             embed.description += Data.replace(`\nGained ${gain} rep!`)
-                            Data.set(`level.log`, `<@!${message.author.id}> got ${gain} rep for their daily reward!`)
+                            Data.log(`<@!${message.author.id}> got ${gain} rep for their daily reward!`, message.author.id)
                         }
                     } else {
                         embed.title = `Your Daily Reward Isn't Ready Yet, ${Tools.getName(Tools.getAuthor(message))}!`
@@ -245,88 +247,27 @@ module.exports = {
                 }
             }
         }, {
-            name: 'Live Stats',
-            alias: ['livestats', 'livestat', 'livelevels', 'liveleveling'],
-            description: `Creates messages that are updated live as the leveling system goes on.
-                        The \`<message>\` can be a #channel+messageID, messageID(for current channel), or message url
-                        Refer to \`{prefix}help leaderboard\` for \`<category>\` and \`<time-period>\``,
-            usage: [
-                ['liveStats leaderboard <category> <time-period> <count>', `Creates a live leaderboard of a specific category with a certain number of people`],
-                ['liveStats leaderboard <options...> <message>', 'Makes one of my old messages into a live leaderboard'],
-                ['liveStats log <log-number>', 'Logs different actions that got people points'],
-                ['liveStats log <log-number> <message>', 'Makes one of my old messages into a log message'],
-                ['liveStats remove <message>', 'Stop updating a live message'],
-                ['liveStats list', 'List all the live stats messages I\'m updating'],
-            ],
-            public: false,
-            developer: false,
-            guildOnly: true,
-            async execute(message, args) {
-                if(['remove', 'rem', 'r', 'delete', 'del', 'd', 'dlt'].includes(args[0])) {
-                    if(args.length < 2) return Tools.fault(message.channel, 'Give me a message!')
-                    let msg = Tools.getMessageID(message, args[1], args[2])
-                    Tools.success(message.channel, `I will stop updating the stats on [that message](${Tools.getURL(message.guild, msg[0], msg[1])})!`)
-                    return Data.set(`level.live.remove.${msg[0]}.${msg[1]}`)
-                } else if(['list', 'lst', 'l', 'all', 'show'].includes(args[0])) {
-                    return message.channel.send({embed: Data.replaceEmbed({
-                        title: 'Live Stats Messages',
-                        description: Data.get('level.live').map((lb) => {
-                            if(lb.type === 'leaderboard') {
-                                return `<#${lb.channel}> [link](${Tools.getURL(message.guild, lb.channel, lb.message)}) (leaderboard) - ${lb.stat} ${lb.time}`
-                            } else if(lb.type === 'log') {
-                                return `<#${lb.channel}> [link](${Tools.getURL(message.guild, lb.channel, lb.message)}) (log) - ${lb.num}`
-                            } else return ' oop- '
-                        }).join('\n')
-                    })})
-                } else if(['leaderboard', 'lb', 'liveleaderboard', 'livelb'].includes(args[0])) {
-                    let stat = getStatName(args[1]) ?? 'points'
-                    let time = getTimePeriodName(args[2]) ?? 'weekly'
-                    let count = Math.min(50, Math.max(1, parseInt(args[3]))) || 10
-                    let msg
-                    if(args[4] === undefined) msg = await message.channel.send('Loading...')
-                    else {
-                        msg = await Tools.findMessage(message, args[4], args[5])
-                        if(msg === undefined) return Tools.fault(message.channel, `I couldn't find that message!`)
-                        if(!msg.editable) return Tools.fault(message.channel, `I can't edit that [message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})`)
-                        Tools.success(message.channel, `I will update the new live leaderboard at [that message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})!`)
-                    }
-                    Data.set(`level.live.leaderboard.${msg.channel.id}.${msg.id}`, { stat: stat, time: time, count: count })
-                    message.delete()
-                } else if(['log', 'logging'].includes(args[0])) {
-                    let num = Math.min(50, Math.max(1, parseInt(args[1]))) || 1
-                    let msg
-                    if(args[2] === undefined) msg = await message.channel.send('Loading...')
-                    else {
-                        msg = await Tools.findMessage(message, args[4], args[5])
-                        if(msg === undefined) return Tools.fault(message.channel, `I couldn't find that message!`)
-                        if(!msg.editable) return Tools.fault(message.channel, `I can't edit that [message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})`)
-                        Tools.success(message.channel, `I will update the log #${num} at [that message](${Tools.getURL(msg.guild, msg.channel.id, msg.id)})!`)
-                    }
-                    Data.set(`level.live.log.${msg.channel.id}.${msg.id}`, { num: num })
-                    message.delete()
-                }
-            }
-        }, {
             name: 'Leveling Configuration',
             alias: ['levelconfig', 'lvlconfig', 'levelsettings', 'lvlsettings'],
             description: `Set different leveling settings (cooldowns are in minutes)`,
             usage: [
+                ['levelConfig log <#channel>', `Set the channel used for logging and posting the live leaderboard`],
                 ['levelConfig levels <level> <points>', `Configure how much points it takes to get to a certain level`],
                 ['levelConfig show|list', `Show all leveling settings`],
                 ['levelConfig channel (enable|disable) [#channel]|(all)', 'Set channels to gain points in'],
-                ['levelConfig message [min points] [max points] [cooldown]', 'Set points gained from text messaging'],
-                ['levelConfig voice [min points] [max points] [cooldown]', 'Set points gained every [cooldown] minutes in vc'],
+                ['levelConfig message|voice [min points] [max points] [cooldown]', 'Set points gained from text messaging or spending time in vc'],
                 ['levelConfig daily <day> <points>', 'Set the daily rewards. <day> is a number from 1 to 7. Every 7 days, rep will be rewarded in place of points'],
                 ['levelConfig rep [give points] [recieve points] [cooldown]', 'Set points gained from giving or recieving rep'],
-                ['levelConfig bump [points]', 'Set points gained by bumping with Disboard'],
-                ['levelConfig counting [points]', 'Set points gained for each counting in {counting}'],
-                ['levelConfig invite [points]', 'Set points gained for inviting someone']
+                ['levelConfig bump|counting|invite [points]', 'Set points gained'],
             ],
             public: false,
             developer: false,
             guildOnly: true,
             execute(message, args) {
-                if(['show', 'list', 'all', 'settings'].includes(args[0])) {
+                if(['log', 'logging'].includes(args[0])) {
+                    if(message.mentions.channels.size > 0) Data.set('level.channel', message.mentions.channels.first().id)
+                    message.channel.send(Data.replace('Logging channel set to: {level.channel}'))
+                } else if(['show', 'list', 'all', 'settings'].includes(args[0])) {
                     message.channel.send({embed: Data.replaceEmbed({
                         title: 'Leveling Settings',
                         description: `
@@ -346,7 +287,7 @@ module.exports = {
                         Data.get('level.members').forEach((member) => {
                             let points = Data.get(`member.${member}.points`)
                             let level = Tools.getLevel(oldLevels, points)
-                            Data.set(`member.${member}.points`, Data.get(`level.levels.${level-1}`)+points-oldLevels[level-1], false)
+                            Data.set(`member.${member}.points`, Data.get(`level.levels.${level}`)+points-(oldLevels[level-1] ?? 0), false)
                         })
                         Data.save('Leveling')
                     }
@@ -395,7 +336,7 @@ module.exports = {
                 let member = bump.slice(2, 20)
                 Data.set(`member.${member}.bumps.add`, 1, false)
                 Data.set(`member.${member}.points.add`, Data.get('level.bump'), false)
-                Data.set(`level.log`, `<@!${member}> got ${Data.get(`level.bump`)} points bumping the server!`, false)
+                Data.log(`<@!${member}> got ${Data.get(`level.bump`)} points bumping the server!`, member)
             }
         }
 
