@@ -78,8 +78,8 @@ module.exports = {
 			case 'level.invite': return data['Leveling'].config.invite
 			case 'level.members': return Object.keys(data['Leveling'].stats)
 			case 'level.levels': return data['Leveling'].config.levels
-			case 'counting': return data['Counting'].channel
-			case 'text': return data['Text'].users
+			case 'counting': return data['Fun'].counting
+			case 'text': return data['Fun'].reactions
 		}
 
 		const args = name.split('.')
@@ -166,8 +166,8 @@ module.exports = {
 			}
 		}
 
-		if(args[0] === 'text') return data['Text'].users.includes(args[1])
-        if(args[0] === 'counting') return data['Counting'].channel === args[1]
+		if(args[0] === 'text') return data['Fun'].reactions.includes(args[1])
+        if(args[0] === 'counting') return data['Fun'].counting === args[1]
 	},
 	/**
 	 * 
@@ -309,20 +309,14 @@ module.exports = {
 			didUpdate = false
 		} if(didUpdate && save) return this.save('Profiles')
 
-		// Counting
+		// Fun
 		didUpdate = true;
 		switch(name) {
-			case 'counting': data['Counting'].channel = value; break
+			case 'counting': data['Fun'].counting = value; break
+			case 'text.disable': if(!data['Fun'].reactions.includes(value)) data['Fun'].reactions.push(value); break
+			case 'text.enable': if(data['Fun'].reactions.includes(value)) data['Fun'].reactions.splice(data['Fun'].reactions.indexOf(value), 1); break
 			default: didUpdate = false
-		} if(didUpdate && save) return this.save('Counting')
-
-		// Text
-		didUpdate = true;
-		switch(name) {
-			case 'text.disable': if(!data['Text'].users.includes(value)) data['Text'].users.push(value); break
-			case 'text.enable': if(data['Text'].users.includes(value)) data['Text'].users.splice(data['Text'].users.indexOf(value), 1); break
-			default: didUpdate = false
-		} if(didUpdate && save) return this.save('Text')
+		} if(didUpdate && save) return this.save('Fun')
 	},
 	/**
 	 * Save data to its file
@@ -463,8 +457,8 @@ function replaceStr(str) {
 	})
 
     // Fun
-    str = str.replace(/{counting}/gi, `<#${data['Counting'].channel}>`)
-    str = str.replace(/{text.(.*?)}/gi, (x) => data['Text'].users.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
+    str = str.replace(/{counting}/gi, `<#${data['Fun'].counting}>`)
+    str = str.replace(/{text.(.*?)}/gi, (x) => data['Fun'].reactions.includes(x.slice(6, -1)) ? 'disabled' : 'enabled')
     
     return str
 }

@@ -1,6 +1,0 @@
-{
-    "name": "Text",
-    "description": "List of users who opt out of the reactions",
-    "file": "text.json",
-    "users": []
-}

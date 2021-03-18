@@ -1,0 +1,7 @@
+{
+    "name": "Fun",
+    "description": "Data for some fun games that don't really need their own json file",
+    "file": "fun.json",
+    "counting": "",
+    "reactions": []
+}
