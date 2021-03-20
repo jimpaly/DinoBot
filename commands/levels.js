@@ -56,7 +56,7 @@ module.exports = {
                     showStat(message.channel, Tools.getAuthor(message), 'points')
                 } else {
                     Tools.findMember(message, args[0]).then((member) => {
-                        if(member !== undefined) showStat(message.channel, member, stat)
+                        if(member !== undefined) showStat(message.channel, member, 'points')
                         else Tools.fault(message.channel, `I can't seem to find a person named ${args[0]}!`)
                     });
                 }
@@ -174,7 +174,7 @@ module.exports = {
             developer: false,
             guildOnly: false,
             execute(message, args) {
-                
+
                 let stat, time, option
                 for(const arg of args) {
                     stat = stat ?? getStatName(arg.toLowerCase())
@@ -372,7 +372,49 @@ module.exports = {
                     message.channel.send('blop')
                 }
             }
-        }, 
+        }, {
+            name: 'Leveling Moderation',
+            alias: ['levelmod', 'lvlmod'],
+            description: `Set leveling stats for different people. 
+                        All categories except for invites can be set`,
+            usage: [
+                ['levelMod set <category> <time period> <member> <amount>', `Set the stat of a person (can't set rep)`],
+                ['levelMod add <category> <member> <amount>', `Add to a person's stat for all time periods`],
+                ['levelMod remove <category> <member> <amount>', `Remove from a person's stat for all time periods`],
+            ],
+            public: false,
+            developer: false,
+            guildOnly: true,
+            async execute(message, args) {
+                let stat, time, member, amount
+                for(const arg of args.slice(1)) {
+                    const s = getStatName(arg.toLowerCase())
+                    if(s !== undefined && stat === undefined) { stat = s; continue }
+                    const  t = getTimePeriodName(arg.toLowerCase())
+                    if(t !== undefined && time === undefined) { time = t; continue }
+                    if(Tools.isNumber(arg) && amount === undefined) { amount = parseInt(arg); continue }
+                    if(member === undefined) member = (await Tools.findMember(message, arg))?.id
+                }
+                stat = stat ?? 'points'
+                time = time ?? 'allTime'
+                if(amount === undefined) return Tools.fault(message.channel, `I need an amount to set!`)
+                if(member === undefined) return Tools.fault(message.channel, `I couldn't find the person!`)
+                const before = Data.get(`member.${member}.${stat}.${time}`)
+                if(['set', 'edit'].includes(args[0])) {
+                    if(['invite', 'rep'].includes(stat)) return Tools.fault(message.channel, `I can't set that stat!`)
+                    Data.set(`member.${member}.${stat}.${time}`, amount)
+                } else if(['add', 'plus', 'give'].includes(args[0])) {
+                    if(stat === 'invite') return Tools.fault(message.channel, `I can't add to invites!`)
+                    Data.set(`member.${member}.${stat}.add`, amount)
+                    time = undefined
+                } else if(['remove', 'minus', 'take'].includes(args[0])) {
+                    if(stat === 'invite') return Tools.fault(message.channel, `I can't remove from invites!`)
+                    Data.set(`member.${member}.${stat}.add`, -amount)
+                    time = undefined
+                }
+                Tools.success(message.channel, `${time ? time+' ' : ''}${stat} of <@!${member}> set from ${before} to {member.${member}.${stat}${time ? '.'+time : ''}}`)
+            }
+        }
 	],
     level(message) {
 
@@ -434,15 +476,15 @@ module.exports = {
         if(newState.channel !== null && oldState.channel === null) { // Joining channel
             voiceJoin(newState.channel)
         } else if(newState.channel === null && oldState.channel !== null) { // Leaving channel
-            voiceLeave(oldState.channel, newState.member)
+            voiceLeave(oldState.channel, oldState.member)
         } else if(newState.channel !== null && oldState.channel !== null) {
             if(newState.channel.id !== oldState.channel.id) {   // Switching channels
                 voiceJoin(newState.channel)
-                voiceLeave(oldState.channel, newState.member)
+                voiceLeave(oldState.channel, oldState.member)
             } else if(!newState.deaf && oldState.deaf) {    // Undeafening
                 voiceJoin(newState.channel)
             } else if(newState.deaf && !oldState.deaf) {    // Deafening
-                voiceLeave(oldState.channel, newState.member)
+                voiceLeave(oldState.channel, oldState.member)
             }
         }
     },
@@ -494,10 +536,10 @@ function showStat(channel, member, stat) {
             ]
         })})
     }
-    let embed = { 
-        title: (['Levels', 'Messaging Stats', 'Voice Chat Stats', 'Reputation', 'Disboard Bumps', 'Counting Game Stats', 
+    let embed = {
+        title: (['Levels', 'Messaging Stats', 'Voice Chat Stats', 'Reputation', 'Disboard Bumps', 'Counting Game Stats',
             'Invite Stats'][['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? '') +
-            ` of ${Tools.getName(member)}`, 
+            ` of ${Tools.getName(member)}`,
         thumbnail: { url: Tools.getAvatar(member) },
         fields: []
     }
@@ -559,19 +601,19 @@ async function showLeaderboard(channel, member, stat, time, option) { // TODO: A
     const message = await channel.send('Loading leaderboard...')
     let leaderboard = Data.get(`level.leaderboard.${member.id}.${stat}.${time}.${option}`)
     let embed = {
-        title: (['Daily', 'Weekly', 'Monthly', 'Annual'][['daily', 'weekly', 'monthly', 'annual'].indexOf(time)] ?? '') + 
+        title: (['Daily', 'Weekly', 'Monthly', 'Annual'][['daily', 'weekly', 'monthly', 'annual'].indexOf(time)] ?? '') +
                 ' ' + (['Leveling', 'Messaging', 'Voice Chat', 'Reputation', 'Disboard Bumping', 'Counting Game', 'Invite']
                 [['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? '') +
                 ' Leaderboard',
-        description: `${stat === 'rep' ? 
+        description: `${stat === 'rep' ?
                 option === 'given' ? 'Now viewing the amount of given reps' :
                 option === 'recieved' ? 'Now viewing the amount of recieved reps' :
-                `Hint: to view the given and recieved reps individually, 
+                `Hint: to view the given and recieved reps individually,
                 try \`{prefix}leaderboard rep given|recieved ${time}\`` :
             stat === 'invite' ?
                 option === 'current' ? `Now only counting invites currently in the server` :
                 option === 'stayed' ? 'Now only counting invites who never left' :
-                `Hint: to not count invites who aren't in the server, 
+                `Hint: to not count invites who aren't in the server,
                 try \`{prefix}leaderboard invite current|stayed ${time}\`` : ''}
             **${leaderboard[0]}**
             ——————————`,
@@ -603,7 +645,7 @@ async function listInviteLinks(channel, member) {
         str += ` | uses: \`${Tools.align(`${invite.uses}/${invite.max || '∞'}`, 4, 'left')}\``
         str += ` | expires: \`${Tools.align(invite.expire ? Tools.durationToStr(invite.expire - Date.now()) : 'never', 6, 'left')}\``
         return str
-    }), { 
+    }), {
         title: `Invite links of ${Tools.getName(member)}`,
         description: invites.length == 0 ? 'no invites ;-;' : '',
         thumbnail: { url: Tools.getAvatar(member) }

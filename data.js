@@ -248,6 +248,9 @@ module.exports = {
 			} else {
 				Tools.setSafe(stats, value, args[1], 'allTime', args[2])
 			}
+		} else if(/^member\.((?!\.).)+\.(points|messages|voice|rep|bumps|counting)\.(allTime|daily|weekly|monthly|annual)$/.test(name)) {
+			if(args[2] === 'points') updateLeaderboard()
+			Tools.setSafe(stats, value, args[1], args[3], args[2])
 		} else if(/^member\.((?!\.).)+\.daily(|\.add)$/.test(name)) {
 			let highest = this.get(`member.${args[1]}.daily.highest`)
 			if(args[3] === 'add') {

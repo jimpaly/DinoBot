@@ -80,8 +80,8 @@ module.exports = {
             Data.set(`member.${inviter}.invite.returned.add`, member.id, false)
         } else {
             Data.set(`member.${inviter}.invite.joined.add`, member.id, false)
+            Data.set(`member.${inviter}.points.add`, Data.get(`level.invite`), false)
         }
-        Data.set(`member.${inviter}.points.add`, Data.get(`level.invite`), false)
         Data.save('Leveling')
 
         Data.set(`member.${member.id}.join`, inviter, false)
@@ -96,6 +96,7 @@ module.exports = {
                 Data.set(`member.${inviter}.invite.left.add`, member.id, false)
             } else if(Data.get(`member.${inviter}.invite.joined`).includes(member.id)) {
                 Data.set(`member.${inviter}.invite.left.add`, member.id, false)
+                Data.set(`member.${inviter}.points.add`, -Data.get(`level.invite`), false)
             }
         } Data.save('Leveling')
     }
