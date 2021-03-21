@@ -113,33 +113,32 @@ module.exports = {
 		if(/^member\.((?!\.).)+\.latest\.(points|voice|daily|rep)$/.test(name)) return Tools.getSafe(stats, 0, 'latest', args[3])
 		if(/^member\.((?!\.).)+\.latest\.(repTo|repFrom)$/.test(name)) return Tools.getSafe(stats, "", 'latest', args[3])
 		if(/^level\.leaderboard\.((?!\.).)+\.((?!\.).)+\.((?!\.).)+(|\.((?!\.).)+)$/.test(name)) {
-			let stat = args[3], time = args[4], option = args[5]
 			let memberPlace = ''
-			let leaderboard = this.get('level.members').map((otherMember) => {
-				let otherStat = this.get(`member.${otherMember}.${stat}.${time}`)
-				if(stat === 'rep') {
-					if(option === 'given') otherStat = otherStat.given
-					else if(option === 'recieved') otherStat = otherStat.recieved
-					else otherStat = otherStat.recieved - otherStat.given
-				} else if(stat === 'invite') {
-					if(option === 'current') otherStat = otherStat.joined - otherStat.left
-					else if(option === 'stayed') otherStat = otherStat.joined - otherStat.left - otherStat.returned
-					else otherStat = otherStat.joined
+			let leaderboard = this.get('level.members').filter(member => !this.get(`member.${member}.bot`)).map(member => {
+				let stat = this.get(`member.${member}.${args[3]}.${args[4]}`)
+				if(args[3] === 'rep') {
+					if(args[5] === 'given') stat = stat.given
+					else if(args[5] === 'recieved') stat = stat.recieved
+					else stat = stat.recieved - stat.given
+				} else if(args[3] === 'invite') {
+					if(args[5] === 'current') stat = stat.joined - stat.left
+					else if(args[5] === 'stayed') stat = stat.joined - stat.left - stat.returned
+					else stat = stat.joined
 				}
 				return {
-					member: otherMember,
-					stat: otherStat
+					member: member,
+					stat: stat
 				}
-			}).sort((a, b) => b.stat - a.stat).map((memberStat, index) => {
+			}).sort((a, b) => b.stat - a.stat).map((stat, index) => {
 				// TODO: optimize by taking advantage of replaceEmbed (or is this really optimizing?)
-				let statStr = memberStat.stat+''
-				if(stat === 'voice') statStr = Tools.durationToStr(memberStat.stat, 1, 2)
-				let ret = `${index+1}. <@!${memberStat.member}> - ${statStr} `
+				let statStr = stat.stat+''
+				if(args[3] === 'voice') statStr = Tools.durationToStr(stat.stat, 1, 2)
+				let ret = `${index+1}. <@!${stat.member}> - ${statStr} `
 				ret += [`points`, 'messages', '', 
-					option === undefined ? '' : option, 'bumps', 'counts', 'members']
-					[['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(stat)] ?? ''
-				if(stat === 'points' && time === 'allTime') ret += ` - lvl ${this.get(`member.${memberStat.member}.level`)}`
-				if(memberStat.member === args[2]) {
+				args[5] === undefined ? '' : args[5], 'bumps', 'counts', 'members']
+					[['points', 'messages', 'voice', 'rep', 'bumps', 'counting', 'invite'].indexOf(args[3])] ?? ''
+				if(args[3] === 'points' && args[4] === 'allTime') ret += ` - lvl ${this.get(`member.${stat.member}.level`)}`
+				if(stat.member === args[2]) {
 					memberPlace = ret
 					return `**${ret}**`
 				} 
