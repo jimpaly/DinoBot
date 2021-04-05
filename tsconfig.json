@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+      "outDir": "./output",
+      "resolveJsonModule": true,
+      "allowJs": true,
+      "module": "commonjs",
+      "target": "esnext",
+      "moduleResolution": "node",
+      "skipLibCheck": true,
+      "noEmitOnError": true,
+      "noImplicitAny": true,
+      "strictNullChecks": true,
+      "noImplicitThis": true
+    },
+    "include": ["./src/**/*"],
+    "exclude": ["./output/**/*", "./src/configuration/*", "./src/private.json"]
+}

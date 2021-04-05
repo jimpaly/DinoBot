@@ -1,0 +1,66 @@
+{
+    "logging": {
+        "channel": "",
+        "leaderboard": "",
+        "lastUpdate": 0
+    },
+    "disabled": [
+        "",
+        "816758603645714563"
+    ],
+    "levels": [
+        0,
+        100,
+        200,
+        300,
+        500,
+        700,
+        1000,
+        1300,
+        1600,
+        2000,
+        2400,
+        2800,
+        3200,
+        3600,
+        4000,
+        4500,
+        5000
+    ],
+    "messages": {
+        "points": {
+            "min": 10,
+            "max": 50
+        },
+        "cooldown": 1
+    },
+    "voice": {
+        "points": {
+            "min": 10,
+            "max": 30
+        },
+        "cooldown": 1
+    },
+    "daily": [
+        100,
+        200,
+        300,
+        500,
+        700,
+        1000,
+        1
+    ],
+    "reps": {
+        "points": {
+            "give": 200,
+            "recieve": 500
+        },
+        "cooldown": 30
+    },
+    "invites": {
+        "join": 500,
+        "leave": 300
+    },
+    "bumps": 200,
+    "counts": 10
+}
