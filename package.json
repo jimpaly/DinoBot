@@ -1,6 +1,6 @@
 {
   "name": "dinobot",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Bot for a Discord server I'm in",
   "main": "bot.js",
   "scripts": {
@@ -9,7 +9,8 @@
     "init": "mv configuration_templates configuration; mv private-template.json private.json; vim private.json",
     "build": "tsc",
     "watch": "tsc -w",
-    "zip": "zip DinoBot.zip -r output configuration_templates private-template.json package.json package-lock.json -x **/.DS_Store"
+    "zip": "zip DinoBot.zip -r output configuration_templates private-template.json package.json package-lock.json -x **/.DS_Store",
+    "update": "curl -s https://api.github.com/repos/jimpaly/DinoBot/releases/latest | grep \"\\\"browser_download_url\\\":.*zip\" | cut -d '\"' -f 4 | wget -qi - -O DinoBot.zip; unzip -o DinoBot"
   },
   "repository": {
     "type": "git",
