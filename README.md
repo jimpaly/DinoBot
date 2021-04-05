@@ -11,7 +11,7 @@ A friendly little bot for a friendly little Discord Server I'm in :)
 Here are the steps you should follow to get this up and running with your own bot
 
 1. Make sure you've [made a Discord application](https://discordjs.guide/preparations/setting-up-a-bot-application.html) and installed [node.js](https://nodejs.org/en/)
-2. Download the [latest release](https://github.com/jimpaly/DinoBot/releases), or run  
+2. Download the [latest release](https://github.com/jimpaly/DinoBot/releases/latest), or run  
 ```
 curl -s https://api.github.com/repos/jimpaly/DinoBot/releases/latest \ 
 | grep "\"browser_download_url\":.*zip" \ 
