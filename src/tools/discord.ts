@@ -1,9 +1,8 @@
 import * as Discord from 'discord.js'
 import { CommandoClient, CommandoMessage } from 'discord.js-commando'
-import * as Tools from './misc'
 import { replace, ReplaceVars } from '../database'
-import { replaceTags } from './misc'
-import { wait } from './misc'
+import { replaceTags } from './misc.js'
+import { wait } from './misc.js'
 
 export type MessageChannel = Discord.TextChannel | Discord.DMChannel | Discord.NewsChannel
 export type User = Discord.User | Discord.GuildMember

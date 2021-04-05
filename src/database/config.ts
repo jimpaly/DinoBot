@@ -1,7 +1,14 @@
 import { oneLine } from 'common-tags';
-import config = require('../../configuration/config.json')
 import { Obj, Draw, Discord } from '../tools'
 import { ActivityOptions, ActivityType } from 'discord.js'
+
+
+let config = {
+    prefix: "",
+    status: { mode: "", message: "" },
+    color: "",
+    disabled: [""],
+}
 
 export function replace(str: string) {
 
@@ -20,9 +27,8 @@ export function replace(str: string) {
     return str
 }
 
-function save() {
-    Obj.saveJSON(config, `config.json`)
-}
+export const read = async () => {config = await Obj.readJSON('config.json')}
+export const save = () => Obj.saveJSON(config, 'config.json')
 
 interface StatusOptions {
     message?: string,

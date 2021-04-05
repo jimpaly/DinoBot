@@ -1,5 +1,3 @@
-import { Time } from "."
-
 export const sec = 1000
 export const min = 60000
 export const hr = 3600000
@@ -69,7 +67,7 @@ export function getTimezoneOffset(timezone: string) {
 	if(timezone === undefined || typeof timezone !== 'string') return 0
 	let date = new Date(), tzDate: Date
 	try { tzDate = new Date(date.toLocaleString('en-US', { timeZone: timezone })) } 
-	catch { return parseFloat(getTimezone(timezone) ?? '+0') * Time.hr }
+	catch { return parseFloat(getTimezone(timezone) ?? '+0') * hr }
 	let diff = tzDate.getTime() - date.getTime() - date.getTimezoneOffset()*60000
-	return Math.round(diff/1800000)/2 * Time.hr
+	return Math.round(diff/1800000)/2 * hr
 }

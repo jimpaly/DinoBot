@@ -10,7 +10,7 @@
     "build": "tsc",
     "watch": "tsc -w",
     "zip": "zip DinoBot.zip -r output configuration_templates private-template.json package.json package-lock.json -x **/.DS_Store",
-    "update": "curl -s https://api.github.com/repos/jimpaly/DinoBot/releases/latest | grep \"\\\"browser_download_url\\\":.*zip\" | cut -d '\"' -f 4 | wget -qi - -O DinoBot.zip; unzip -o DinoBot"
+    "update": "curl -s https://api.github.com/repos/jimpaly/DinoBot/releases/latest | grep \"\\\"browser_download_url\\\":.*zip\" | cut -d '\"' -f 4 | wget -qi - -O DinoBot.zip; unzip -o DinoBot; npm update; cp -v -n configuration_templates/* configuration"
   },
   "repository": {
     "type": "git",

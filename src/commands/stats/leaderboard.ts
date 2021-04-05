@@ -1,7 +1,7 @@
 import { oneLine, stripIndents } from 'common-tags'
 import { CommandoClient, Command, CommandoMessage } from "discord.js-commando"
 import { Stats } from '../../database'
-import { Tools, Discord, Time, Obj } from '../../tools'
+import { Discord } from '../../tools'
 
 module.exports = class LeaderboardCommand extends Command {
 

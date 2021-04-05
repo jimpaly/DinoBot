@@ -1,5 +1,4 @@
 import * as fs from 'fs'
-import { join } from 'path'
 
 /** Copies all properties of an object to a new object */
 export function clone(object: any): any {
@@ -98,9 +97,12 @@ export function readJSON(file: string) {
 	}).catch(err => console.log(`fault reading file ${file}:`, err))
 }
 export function saveJSON(object: object, file: string) {
-	fs.writeFile(`./configuration/${file}`, JSON.stringify(object, null, 4), (err) => {
-		if (err) return console.log(`fault writing file ${file}:`, err)
-	})
+	return new Promise<void>((resolve, reject) => {
+		fs.writeFile(`./configuration/${file}`, JSON.stringify(object, null, 4), (err) => {
+			if(err) reject(err)
+			else resolve()
+		})
+	}).catch(err => console.log(`fault writing file ${file}:`, err))
 }
 
 export function getSafe(object: any, defaultVal: any, ...properties: string[]): any {

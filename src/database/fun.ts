@@ -1,6 +1,10 @@
 import { Discord, Obj, Tools } from '../tools'
-import config = require('../../configuration/fun.json')
 import { Message } from 'discord.js'
+
+let config = {
+    counting: '',
+    reaction: { channels: [''], members: [''] }
+}
 
 export async function handleCount(message: Message): Promise<any> {
 
@@ -68,7 +72,8 @@ export function react(message: Message) {
     }
 }
 
-export const saveConfig = () => Obj.saveJSON(config, `fun.json`)
+export const readConfig = async () => {config = await Obj.readJSON('fun.json')}
+export const saveConfig = () => Obj.saveJSON(config, 'fun.json')
 export const getCountingChannel = () => config.counting
 export function setCountingChannel(channel: string) {
     config.counting = channel

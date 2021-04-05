@@ -1,14 +1,14 @@
 import { Message } from 'discord.js'
 import { Discord, Obj } from '../tools'
-import * as _Config from './config'
-import * as _Stats from './stats'
-import * as _Profiles from './profiles'
-import * as _Fun from './fun'
+import * as _Config from './config.js'
+import * as _Stats from './stats.js'
+import * as _Profiles from './profiles.js'
+import * as _Fun from './fun.js'
 
-export * as Config from './config'
-export * as Stats from './stats'
-export * as Profiles from './profiles'
-export * as Fun from './fun'
+export * as Config from './config.js'
+export * as Stats from './stats.js'
+export * as Profiles from './profiles.js'
+export * as Fun from './fun.js'
 
 export interface ReplaceVars {
     message?: Message

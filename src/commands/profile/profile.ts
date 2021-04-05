@@ -1,6 +1,4 @@
-import { oneLine, stripIndent } from 'common-tags'
 import { Command, CommandoClient, CommandoMessage } from "discord.js-commando"
-import { Stats } from '../../database'
 import { Discord, Tools } from '../../tools'
 
 module.exports = class ProfileCommand extends Command {

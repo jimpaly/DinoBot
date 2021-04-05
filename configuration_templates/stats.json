@@ -3,9 +3,7 @@
         "channel": "",
         "leaderboard": ""
     },
-    "disabled": [
-        ""
-    ],
+    "disabled": [],
     "levels": [0],
     "messages": {
         "points": {

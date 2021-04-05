@@ -1,9 +1,21 @@
 import { oneLine, stripIndent, stripIndents } from 'common-tags'
-import { MessageEmbedOptions, Collection, TextChannel, NewsChannel, Message } from 'discord.js'
+import { MessageEmbedOptions, TextChannel, NewsChannel, Message } from 'discord.js'
 import * as Mongoose from 'mongoose'
 import { Time, Tools, Obj, Discord } from '../tools'
-import config = require('../../configuration/stats.json')
-import * as Profiles from './profiles'
+import * as Profiles from './profiles.js'
+
+let config = {
+    logging: { channel: '', leaderboard: '' },
+    disabled: [''],
+    levels: [0],
+    messages: { points: { min: 0, max: 0 }, cooldown: 0 },
+    voice: { points: { min: 0, max: 0 }, cooldown: 0 },
+    daily: [0],
+    reps: { points: { give: 0, receive: 0 }, cooldown: 0 },
+    invites: { join: 0, leave: 0 },
+    bumps: 0,
+    counts: 0,
+}
 
 // let cache = new Collection<string, {
 //     user: UserStat,
@@ -690,7 +702,8 @@ async function updateLeaderboard(edit = true): Promise<void> {
 	saveConfig()
 }
 
-export const saveConfig = () => Obj.saveJSON(config, `stats.json`)
+export const readConfig = async () => {config = await Obj.readJSON('stats.json')}
+export const saveConfig = () => Obj.saveJSON(config, 'stats.json')
 export function getReward(stat: Exclude<StatType,'points'>) {
     if(stat === 'messages' || stat === 'voice') {
         return config[stat].points

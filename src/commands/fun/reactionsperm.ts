@@ -1,8 +1,8 @@
-import { oneLine, stripIndents } from 'common-tags'
-import { Collection, GuildChannel, TextChannel } from 'discord.js'
+import { oneLine } from 'common-tags'
+import { Collection, GuildChannel } from 'discord.js'
 import { CommandoClient, Command, CommandoMessage } from "discord.js-commando"
 import { Fun } from '../../database'
-import { Tools, Discord, Time, Obj } from '../../tools'
+import { Discord } from '../../tools'
 
 module.exports = class ReactionsPermCommand extends Command {
 
