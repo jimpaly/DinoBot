@@ -1,0 +1,6 @@
+{
+  "token": "[BOT_TOKEN]",
+  "developer": "[USER_ID]",
+  "guild": "[GUILD_ID]",
+  "database": "[SERVER+DATABASE]"
+}
