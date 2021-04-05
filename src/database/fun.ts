@@ -1,5 +1,5 @@
 import { Discord, Obj, Tools } from '../tools'
-import config = require('../configuration/fun.json')
+import config = require('../../configuration/fun.json')
 import { Message } from 'discord.js'
 
 export async function handleCount(message: Message): Promise<any> {

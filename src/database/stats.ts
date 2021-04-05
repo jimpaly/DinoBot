@@ -2,7 +2,7 @@ import { oneLine, stripIndent, stripIndents } from 'common-tags'
 import { MessageEmbedOptions, Collection, TextChannel, NewsChannel, Message } from 'discord.js'
 import * as Mongoose from 'mongoose'
 import { Time, Tools, Obj, Discord } from '../tools'
-import config = require('../configuration/stats.json')
+import config = require('../../configuration/stats.json')
 import * as Profiles from './profiles'
 
 // let cache = new Collection<string, {

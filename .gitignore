@@ -1,5 +1,7 @@
 node_modules
 .vscode
 output
-src/private.json
-.DS_Store
+configuration
+private.json
+**/.DS_Store
+**.zip

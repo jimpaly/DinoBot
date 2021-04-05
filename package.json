@@ -4,13 +4,18 @@
   "description": "Bot for a Discord server I'm in",
   "main": "bot.js",
   "scripts": {
-    "test": "node output/bot"
+    "test": "node output/bot",
+    "start": "node output/bot",
+    "init": "mv configuration_templates configuration; mv private-template.json private.json; vim private.json",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "zip": "zip DinoBot.zip -r output configuration_templates private-template.json package.json package-lock.json -x **/.DS_Store"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jimpaly/DinoBot.git"
   },
-  "author": "Jimpaly",
+  "author": "jimpaly",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/jimpaly/DinoBot/issues"

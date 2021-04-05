@@ -7,7 +7,7 @@
 		  ██████   ██  ██   ████   ██████   ██████    ██████      ██    
 */
 
-import * as privates from './private.json'
+import * as privates from '../private.json'
 import { oneLine } from 'common-tags'
 import { Config, Fun, Profiles, Stats } from './database'
 import * as Mongoose from 'mongoose'

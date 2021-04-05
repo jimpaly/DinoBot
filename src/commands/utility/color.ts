@@ -37,7 +37,7 @@ module.exports = class ColorSetCommand extends Command {
         return message.embed(await Discord.embed({
             title: 'Color is set to: {color}',
             image: { url: 'attachment://color.jpg' }
-        }), {files: [{
+        }), '', {files: [{
             attachment: Draw.createColorImage(Config.getColor(), 600, 200),
             name: 'color.jpg'
         }]})

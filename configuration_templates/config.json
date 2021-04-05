@@ -1,8 +1,8 @@
 {
     "prefix": ",",
     "status": {
-        "mode": "PLAYING",
-        "message": "test"
+        "mode": "",
+        "message": ""
     },
     "color": "#000000",
     "disabled": [""]

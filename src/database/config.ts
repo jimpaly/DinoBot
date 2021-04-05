@@ -1,5 +1,5 @@
 import { oneLine } from 'common-tags';
-import config = require('../configuration/config.json')
+import config = require('../../configuration/config.json')
 import { Obj, Draw, Discord } from '../tools'
 import { ActivityOptions, ActivityType } from 'discord.js'
 

@@ -90,7 +90,7 @@ export async function replace(object: any, replaceStr: (str: string) => string |
 
 export function readJSON(file: string) {
 	return new Promise<any>((resolve, reject) => {
-		fs.readFile(join(__dirname, `../configuration/${file}`), 'utf8', (err, str) => {
+		fs.readFile(`./configuration/${file}`, 'utf8', (err, str) => {
 			if (err) return reject(err)
 			try { resolve(JSON.parse(str)) }
 			catch(err) { reject(err) }
@@ -98,7 +98,7 @@ export function readJSON(file: string) {
 	}).catch(err => console.log(`fault reading file ${file}:`, err))
 }
 export function saveJSON(object: object, file: string) {
-	fs.writeFile(join(__dirname, `../configuration/${file}`), JSON.stringify(object, null, 4), (err) => {
+	fs.writeFile(`./configuration/${file}`, JSON.stringify(object, null, 4), (err) => {
 		if (err) return console.log(`fault writing file ${file}:`, err)
 	})
 }
