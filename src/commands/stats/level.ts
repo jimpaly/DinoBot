@@ -72,19 +72,26 @@ function makeLevelingCard(user: Stats.UserStat) {
 
     ctx.beginPath()
     ctx.arc(10+barHeight/2, barY+barHeight/2, barHeight/2, Math.PI/2, Math.PI*3/2)
-    ctx.rect(10+barHeight/2, barY, width-20-barHeight, barHeight)
+    // ctx.rect(10+barHeight/2, barY, width-20-barHeight, barHeight)
     ctx.arc(width-10-barHeight/2, barY+barHeight/2, barHeight/2, Math.PI*3/2, Math.PI/2, false)
+    ctx.lineTo(10+barHeight/2, barY+barHeight)
     ctx.clip()
     
     ctx.fillStyle = '#9a5fbb50'
     ctx.fillRect(10, barY, width-20, barHeight)
 
-    let gradient = ctx.createLinearGradient(0, 0, width, 0)
-    gradient.addColorStop(0, '#8242c4')
-    gradient.addColorStop(1, '#ce79e1')
-    ctx.fillStyle = gradient
+    let fillGradient = ctx.createLinearGradient(0, 0, width, 0)
+    fillGradient.addColorStop(0, '#8242c4')
+    fillGradient.addColorStop(1, '#ce79e1')
+    ctx.fillStyle = fillGradient
     ctx.fillRect(10, barY, pointsFrom / (pointsFrom+pointsTo) * (width-20), barHeight)
 
+    let borderGradient = ctx.createLinearGradient(0, 0, width, 0)
+    borderGradient.addColorStop(0, '#ad79e1')
+    borderGradient.addColorStop(1, '#e3beec')
+    ctx.strokeStyle = borderGradient
+    ctx.lineWidth = 5
+    ctx.stroke()
     ctx.closePath()
 
     return canvas.toBuffer()

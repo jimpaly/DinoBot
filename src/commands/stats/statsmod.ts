@@ -103,6 +103,7 @@ module.exports = class StatsModCommand extends Command {
             } else {
                 if(amt.amount) user[stat][time] = amt.amount
             }
+            user.save()
         } else {
             user.addStat(stat, amt)
         }
