@@ -8,6 +8,7 @@
 */
 
 import { oneLine } from 'common-tags'
+import * as readLine from 'readline'
 import { Config, Fun, Profiles, Stats } from './database'
 import * as Mongoose from 'mongoose'
 import { join } from 'path'
@@ -19,7 +20,7 @@ import { Discord, Obj } from './tools'
 
 	process.stdout.write(`${new Date().toLocaleString('en-US')}`)
 
-	process.stdout.cursorTo(30)
+	readLine.cursorTo(process.stdout, 30)
 	process.stdout.write(`Loading private.json...`)
 	const privates = await Obj.readJSON('../private.json') as {
 		token: string
@@ -27,25 +28,25 @@ import { Discord, Obj } from './tools'
 		guild: string
 		database: string
 	}
-	process.stdout.cursorTo(30)
+	readLine.cursorTo(process.stdout, 30)
 	process.stdout.write(`Loading config.json... `)
 	await Config.read()
-	process.stdout.cursorTo(30)
+	readLine.cursorTo(process.stdout, 30)
 	process.stdout.write(`Loading fun.json...    `)
 	await Fun.readConfig()
-	process.stdout.cursorTo(30)
+	readLine.cursorTo(process.stdout, 30)
 	process.stdout.write(`Loading stats.json...  `)
 	await Stats.readConfig()
-	process.stdout.cursorTo(30)
+	readLine.cursorTo(process.stdout, 30)
 	process.stdout.write(`Loaded config files    `)
 
-	process.stdout.cursorTo(55)
+	readLine.cursorTo(process.stdout, 55)
 	const database = privates.database.replace(/:([^\/]+?)@/, ':******@')
 	process.stdout.write(`Connecting to MongoDB at ${database}...`)
 	Mongoose.connect(privates.database, {useNewUrlParser: true, useUnifiedTopology: true})
 	Mongoose.connection.on('error', console.error.bind(console, 'Error connecting to MongoDB: '))
 	Mongoose.connection.once('open', () => {
-		process.stdout.cursorTo(55)
+		readLine.cursorTo(process.stdout, 55)
 		process.stdout.write(`Connected to MongoDB`+' '.repeat(database.length+9))
 	})
 
@@ -84,7 +85,7 @@ import { Discord, Obj } from './tools'
 		if(message.channel.id === Fun.getCountingChannel()) return 'counting channel'
 		return false
 	})
-	process.stdout.cursorTo(80)
+	readLine.cursorTo(process.stdout, 80)
 	process.stdout.write(`Logging into Discord`)
 	client.login(privates.token)
 
@@ -94,7 +95,7 @@ import { Discord, Obj } from './tools'
 		client.user?.setActivity(Config.getStatus())
 		Discord.guild = client.guilds.cache.get(privates.guild) ?? Discord.guild
 		Discord.getInvites().then(invites => invitesCache = invites)
-		process.stdout.cursorTo(80)
+		readLine.cursorTo(process.stdout, 80)
 		process.stdout.write(`Logged in as @${client.user?.tag}\n`)
 	});
 
