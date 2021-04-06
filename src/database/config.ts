@@ -1,6 +1,7 @@
 import { oneLine } from 'common-tags';
 import { Obj, Draw, Discord } from '../tools'
 import { ActivityOptions, ActivityType } from 'discord.js'
+import { CommandoClient } from 'discord.js-commando'
 
 
 let config = {
@@ -48,8 +49,8 @@ export function setStatus(options: StatusOptions) {
 
 export const getPrefix = () => config.prefix
 export const setPrefix = (prefix: string) => { 
-    config.prefix = prefix.trim()
-    Discord.getClient().commandPrefix = config.prefix
+    config.prefix = prefix.trim();
+    (Discord.guild.client as CommandoClient).commandPrefix = config.prefix
     save() 
 }
 

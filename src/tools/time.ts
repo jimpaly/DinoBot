@@ -4,13 +4,16 @@ export const hr = 3600000
 export const day = 86400000
 
 
-
+/** Set the date to a specific day of the week it is in */
 export function setDay(date: Date, weekday = 1) {
 	let day = date.getDay()
 	if(day < weekday) day += 7
 	date.setHours(-24 * (day - weekday))
 }
-export function durationToStr(duration: number, start = 1, end = 3, dynamic = true) { // 0: second, 1: minute, 2: hour, 3: day
+/** Converts the number of milliseconds to a viewable string, in the format _d _h _m _s\
+ *  For `start` and `end`, // 0 = second, 1 = minute, 2 = hour, and 3 = day
+ */
+export function durationToStr(duration: number, start = 1, end = 3, dynamic = true) { 
 	if(dynamic) {
 		if(end >= 3 && getDay(duration) > 0) {
 			start = Math.max(start, 2); end = 3
@@ -31,21 +34,27 @@ export function durationToStr(duration: number, start = 1, end = 3, dynamic = tr
 	if(start <= 2) str = ` ${getHour(duration, false)}h${str}`
 	return `${getDay(duration)}d${str}`
 }
+/** Get the number of days from number of milliseconds */
 export function getDay(duration: number) {
 	return Math.floor(duration / 86400000)
 }
+/** Get the number of hours from number of milliseconds */
 export function getHour(duration: number, end = true) {
 	if(end) return Math.floor(duration / 3600000)
 	return Math.floor((duration / 3600000) % 24)
 }
+/** Get the number of minutes from number of milliseconds */
 export function getMinute(duration: number, end = false) {
 	if(end) return Math.floor(duration / 60000)
 	return Math.floor((duration / 60000) % 60)
 }
+/** Get the number of seconds from number of milliseconds */
 export function getSecond(duration: number, end = false) {
 	if(end) return Math.floor(duration / 1000)
 	return Math.floor((duration / 1000) % 60)
 }
+
+/** Parse a string into a valid timezone identifier */
 export function getTimezone(timezone: string) {
 	try {
 		new Date().toLocaleString('en-US', { timeZone: timezone })
@@ -63,6 +72,9 @@ export function getTimezone(timezone: string) {
 	}
 	return timezone
 }
+/** Get the timezone offset from UTC of a timezone\
+ *  Make sure to have gotten the valid string with getTimezone() first
+ */
 export function getTimezoneOffset(timezone: string) {
 	if(timezone === undefined || typeof timezone !== 'string') return 0
 	let date = new Date(), tzDate: Date

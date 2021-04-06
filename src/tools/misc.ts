@@ -3,11 +3,11 @@ export interface Range {
     min: number,
     max: number,
 }
-
-// do I still need this with commando?
+/** Check if a string is a positive integer (contains only digits) */
 export function isNumber(number: string) {
 	return /^[0-9]+$/.test(number)
 }
+/** Parse a string to a positive integer. Returns undefined if it's invalid */
 export function parseNumber(number: string) {
     if(isNumber(number)) return parseInt(number)
 }
@@ -22,13 +22,7 @@ export function randomRange(range: Range, amount = 1) {
     return num
 }
 
-export function strFind(str: string, search: RegExp) {
-    let idx = str.search(search)
-    return {
-        start: idx,
-        end: idx+(str.match(search)?.length ?? 0)
-    }
-}
+/** Replace tags in a string conditionally with args */
 export async function replaceTags(str: string, key: string, 
     callback: (args: string[]) => string | null | Promise<string | null>) {
     for(const match of str.match(/{.[^{}]+}/gi) ?? []) {
@@ -39,6 +33,7 @@ export async function replaceTags(str: string, key: string,
     return str
 }
 
+/** Space strings evenly. Used to create tables on discord */
 export function align(str: string, length: number, alignment = 'center') {
     const leftover = Math.max(0, length - str.length)
     if(alignment  === 'left') {
@@ -50,12 +45,6 @@ export function align(str: string, length: number, alignment = 'center') {
     }
 }
 
-export function wait(milliseconds: number) {
-    return new Promise(function(resolve) {
-        setTimeout(resolve, milliseconds);
-    });
-}
-
 /** @returns the number with a suffix added (1st, 2nd, 3rd...) */
 export function numSuffix(num: number) {
     if(Math.floor(num%100/10) == 1) return `${num}th`;
@@ -64,13 +53,16 @@ export function numSuffix(num: number) {
     if(num%10 == 3) return `${num}rd`;
     return `${num}th`;
 }
+/** Converts a float number to percent */
 export function percent(num: number) {
     if(isNaN(num)) return '0%'
     return `${Math.round(num*100)}%`;
 }
+/** Adds a sign to the number, even if it's positive */
 export function addSign(num: number) {
     return num<0 ? `${num}` : `+${num}`;
 }
+/** Makes a unit plural, depending on the amount */
 export function plural(amount: number, unit: string) {
     return `${amount}${unit}${amount == 1 ? '' : 's'}`
 }

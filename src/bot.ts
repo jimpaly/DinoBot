@@ -20,7 +20,8 @@ import { Discord, Obj } from './tools'
 
 	process.stdout.write(`${new Date().toLocaleString('en-US')}`)
 
-	readLine.cursorTo(process.stdout, 30)
+	// Load config files
+	readLine.cursorTo(process.stdout, 40)
 	process.stdout.write(`Loading private.json...`)
 	const privates = await Obj.readJSON('../private.json') as {
 		token: string
@@ -28,28 +29,30 @@ import { Discord, Obj } from './tools'
 		guild: string
 		database: string
 	}
-	readLine.cursorTo(process.stdout, 30)
+	readLine.cursorTo(process.stdout, 40)
 	process.stdout.write(`Loading config.json... `)
 	await Config.read()
-	readLine.cursorTo(process.stdout, 30)
+	readLine.cursorTo(process.stdout, 40)
 	process.stdout.write(`Loading fun.json...    `)
 	await Fun.readConfig()
-	readLine.cursorTo(process.stdout, 30)
+	readLine.cursorTo(process.stdout, 40)
 	process.stdout.write(`Loading stats.json...  `)
 	await Stats.readConfig()
-	readLine.cursorTo(process.stdout, 30)
+	readLine.cursorTo(process.stdout, 40)
 	process.stdout.write(`Loaded config files    `)
 
-	readLine.cursorTo(process.stdout, 55)
+	// Connect to MongoDB with mongoose
+	readLine.cursorTo(process.stdout, 65)
 	const database = privates.database.replace(/:([^\/]+?)@/, ':******@')
 	process.stdout.write(`Connecting to MongoDB at ${database}...`)
 	Mongoose.connect(privates.database, {useNewUrlParser: true, useUnifiedTopology: true})
 	Mongoose.connection.on('error', console.error.bind(console, 'Error connecting to MongoDB: '))
 	Mongoose.connection.once('open', () => {
-		readLine.cursorTo(process.stdout, 55)
+		readLine.cursorTo(process.stdout, 65)
 		process.stdout.write(`Connected to MongoDB`+' '.repeat(database.length+9))
 	})
 
+	// Create Discord client with Commando
 	const client = new CommandoClient({
 		commandPrefix: Config.getPrefix(),
 		owner: privates.developer,
@@ -85,7 +88,7 @@ import { Discord, Obj } from './tools'
 		if(message.channel.id === Fun.getCountingChannel()) return 'counting channel'
 		return false
 	})
-	readLine.cursorTo(process.stdout, 80)
+	readLine.cursorTo(process.stdout, 90)
 	process.stdout.write(`Logging into Discord`)
 	client.login(privates.token)
 
@@ -95,7 +98,7 @@ import { Discord, Obj } from './tools'
 		client.user?.setActivity(Config.getStatus())
 		Discord.guild = client.guilds.cache.get(privates.guild) ?? Discord.guild
 		Discord.getInvites().then(invites => invitesCache = invites)
-		readLine.cursorTo(process.stdout, 80)
+		readLine.cursorTo(process.stdout, 90)
 		process.stdout.write(`Logged in as @${client.user?.tag}\n`)
 	});
 
@@ -108,28 +111,33 @@ import { Discord, Obj } from './tools'
 		if(message.webhookID !== null) return
 		message.content = message.content.trim()
 
+		// Update cached guild
 		Discord.guild = message.guild
 
 		if(message.member) {
-
+			// Increment stats
 			let user = await Stats.get(message.member.id)
 			user.addMessage()
 			if((message.member.voice.channel === null || message.member.voice.deaf)
 			&& user.voice.inVoice) user.updateVoice(false)
 			Stats.handleBump(message)
-
 			if(message.channel.id === Fun.getCountingChannel()) {
 				user.addCount()
 				Fun.handleCount(message)
 			}
+			// text reactions (owo and stuff)
 			Fun.react(message)
 
+			// If it's their first message, create a profile
 			let profile = await Profiles.get(message.member.id)
 			if(profile.joins.length == 0) profile.addInviter() 
 		}
 	});
+
+	// When there's an error? Honestly I don't know what errors this handles
 	client.on('error', console.error);
 
+	// When messages are deleted, remove the members' count
 	client.on('messageDelete', async message => {
 		if(!message.guild || message.guild.id !== privates.guild) return
 		if(message.member && message.channel.id === Fun.getCountingChannel()) {
@@ -147,19 +155,24 @@ import { Discord, Obj } from './tools'
 		})
 	})
 
+	// When voice states change, update voice stats
 	client.on('voiceStateUpdate', (oldState, newState) => {
 		if(!oldState.guild || oldState.guild.id !== privates.guild) return
 		if(!newState.guild || newState.guild.id !== privates.guild) return
 
+		/** @returns the number of real people in the voice channel */
 		function getJoinedCount(channel: VoiceChannel) {
 			return channel.members.filter(member => !member.user.bot 
 				&& member.voice.channel !== null && !member.voice.deaf).size
 		}
+		// TODO: don't count deaf members
+		/** Toggles on the voice status of members in the channel */
 		function voiceJoin(channel: VoiceChannel) {
 			if(getJoinedCount(channel) > 1)
 				Stats.getMany(channel.members.keyArray(), user => 
 					user.updateVoice(true))
 		}
+		/** Toggles off the voice status of members in the channel */
 		function voiceLeave(channel: VoiceChannel, user: Discord.User | null) {
 			if(getJoinedCount(channel) <= 1)
 				Stats.getMany(channel.members.keyArray(), user =>
@@ -184,29 +197,40 @@ import { Discord, Obj } from './tools'
 		}
 	})
 
+	// Update the invites cache (used for tracking inviters)
 	client.on('inviteCreate', () => {
 		Discord.getInvites().then(invites => invitesCache = invites)
 	})
+
+	// When a member joins, create their profile and update invite stats for the inviter
 	client.on('guildMemberAdd', async member => {
 		if(member.guild.id !== privates.guild) return
 
+		// Find the inviter
 		const newInvites = await Discord.getInvites()
 		const inviter = newInvites.findKey((count, id) => count > (invitesCache.get(id)??0 ))
 		invitesCache = newInvites
 
+		// Get member's profile or create a new profile, then add the inviter
 		let profile = await Profiles.get(member.id)
 		profile.addInviter(inviter)
+
+		// Send the inviter reward message to logging channel
 		if(profile.joins.find(join => join.inviter === inviter) && inviter) Stats.log(oneLine`
 			<@!${inviter}> just got {stats.invites.join} points 
 			for inviting <@!${member.id}>!
 		`, [member.id], [inviter])
+
+		// Add the invite to all previous inviters of the member
 		Stats.getMany(profile.joins.map(join => join.inviter ?? ''), user => {
 			user.addInvite(member.id)
 		})
 	})
+	// When a member leaves, remove them from all inviters' stats
 	client.on('guildMemberRemove', async member => {
 		if(member.guild.id !== privates.guild) return
 
+		// Get inviters and remove the invite from them
 		let profile = await Profiles.get(member.id)
 		Stats.getMany(profile.joins.map(join => join.inviter ?? ''), user => {
 			user.removeInvite(member.id)

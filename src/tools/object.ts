@@ -41,9 +41,7 @@ export function copy(oldObj: any, newObj: any) {
 		return newObject
 	}
 }
-/**
- * Similar to copy() but doesn't make clones
- */
+/** Similar to copy() but doesn't make clones */
  export function paste(oldObj: any, newObj: any) {
 	if(newObj === undefined) return oldObj
 	if(oldObj === undefined) return newObj
@@ -67,6 +65,7 @@ export function copy(oldObj: any, newObj: any) {
 	}
 }
 
+/** runs replace recursively on all strings in an object */
 export async function replace(object: any, replaceStr: (str: string) => string | Promise<string>): Promise<any> {
     if(typeof object === 'string') {
         return await replaceStr(object)
@@ -87,6 +86,7 @@ export async function replace(object: any, replaceStr: (str: string) => string |
     }
 }
 
+/** Reads in an object from a JSON file, relative to `configuration/` */
 export function readJSON(file: string) {
 	return new Promise<any>((resolve, reject) => {
 		fs.readFile(`./configuration/${file}`, 'utf8', (err, str) => {
@@ -96,6 +96,7 @@ export function readJSON(file: string) {
 		})
 	}).catch(err => console.log(`fault reading file ${file}:`, err))
 }
+/** saves an object to a JSON file, relative to `configuration/` */
 export function saveJSON(object: object, file: string) {
 	return new Promise<void>((resolve, reject) => {
 		fs.writeFile(`./configuration/${file}`, JSON.stringify(object, null, 4), (err) => {
@@ -103,37 +104,4 @@ export function saveJSON(object: object, file: string) {
 			else resolve()
 		})
 	}).catch(err => console.log(`fault writing file ${file}:`, err))
-}
-
-export function getSafe(object: any, defaultVal: any, ...properties: string[]): any {
-	if(object === undefined) return defaultVal
-	if(properties.length == 0) return copy(defaultVal, object)
-	return getSafe(object[properties[0]], defaultVal, ...properties.slice(1))
-}
-export function setSafe(object: any, value: any, ...properties: string[]) {
-	if(properties.length == 0) return object = value
-	if(object === undefined) object = {}
-	if(properties.length == 1) return object[properties[0]] = value
-	if(object[properties[0]] === undefined) object[properties[0]] = {}
-	setSafe(object[properties[0]], value, ...properties.slice(1))
-}
-
-// could just use filter :P
-export function removeElements(array: any[], ...elements: any[]) {
-	let arr = clone(array)
-	for(let i = arr.length-1; i >= 0; i--) {
-		if(elements.includes(arr[i])) {
-			arr.splice(i, 1)
-		}
-	}
-	return arr
-}
-
-export function matchArgs(args: string[], match: string[]) {
-	for(const i in args) {
-		if(match[i] === undefined || match[i] === '*') continue
-		if(Array.isArray(match[i]) && match[i].includes(args[i])) return false
-		if(!Array.isArray(match[i]) && match[i] === args[i]) return false
-	}
-	return true
 }

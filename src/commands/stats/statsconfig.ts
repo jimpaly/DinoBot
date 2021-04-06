@@ -65,9 +65,9 @@ module.exports = class StatsConfigCommand extends Command {
             }))
         } else if(category === 'messages' || category === 'voice') {
             Stats.setStat(category, { 
-                min: Tools.parseNumber(args[0]) ?? undefined,
-                max: Tools.parseNumber(args[1]) ?? undefined,
-                cooldown: Tools.parseNumber(args[2]) ?? undefined,
+                min: Tools.parseNumber(args[0]),
+                max: Tools.parseNumber(args[1]),
+                cooldown: Tools.parseNumber(args[2]),
             })
             return message.embed(await Discord.embed({
                 title: (category === 'messages' ? 'Messaging' : 'Voice') + ' Settings',
@@ -77,9 +77,9 @@ module.exports = class StatsConfigCommand extends Command {
             }))
         } else if(category === 'reps') {
             Stats.setStat('reps', {
-                give: Tools.parseNumber(args[1]) ?? undefined,
-                receive: Tools.parseNumber(args[2]) ?? undefined,
-                cooldown: Tools.parseNumber(args[3]) ?? undefined,
+                give: Tools.parseNumber(args[1]),
+                receive: Tools.parseNumber(args[2]),
+                cooldown: Tools.parseNumber(args[3]),
             })
             return message.embed(await Discord.embed({
                 title: 'Reputation Settings',
@@ -90,7 +90,7 @@ module.exports = class StatsConfigCommand extends Command {
             }))
         } else if(['invites', 'bumps', 'counts'].includes(category ?? '')) {
             Stats.setStat(category as 'invites'|'bumps'|'counts', {
-                amount: Tools.parseNumber(args[1]) ?? undefined,
+                amount: Tools.parseNumber(args[1]),
             })
             return message.embed(await Discord.embed({
                 title: `${category?.charAt(0)?.toUpperCase()}${category?.slice(1)} Settings`,
@@ -107,8 +107,7 @@ module.exports = class StatsConfigCommand extends Command {
             }))
         } else if(['levels', 'level', 'leveling'].includes(option)) {
             if(Tools.isNumber(args[0])) args.slice(1).forEach((arg, idx) => {
-                if(Tools.isNumber(arg)) 
-                    Stats.setLevel(parseInt(args[0])+idx, parseInt(arg), false)
+                if(Tools.isNumber(arg)) Stats.setLevel(parseInt(args[0])+idx, parseInt(arg), false)
             }) 
             Stats.saveConfig()
             return message.embed(await Discord.embed({
