@@ -119,14 +119,14 @@ module.exports = class StatsConfigCommand extends Command {
             let channels = new Collection<string, GuildChannel>()
             .concat(...args.map(arg => Discord.findChannels(arg)))
             if(['disable', 'off'].includes(status)) {		// Disable a channel
-                channels.forEach(channel => Stats.disableChannel(channel.id, false))
+                Stats.disableChannels(...channels.map(channel => channel.id))
                 Stats.saveConfig()
                 return message.embed(await Discord.embed({
                     title: `🔴 The following channels are now disabled!`,
                     description: channels.map(channel => `<#${channel.id}>`).join(' ')
                 }))
             } else if(['enable', 'on'].includes(status)) {	// Enable a channel
-                channels.forEach(channel => Stats.enableChannel(channel.id, false))
+                Stats.enableChannels(...channels.map(channel => channel.id))
                 Stats.saveConfig()
                 return message.embed(await Discord.embed({
                     title: `🟢 The following channels are now enabled!`,

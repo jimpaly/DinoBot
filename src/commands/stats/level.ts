@@ -62,7 +62,7 @@ function makeLevelingCard(user: Stats.UserStat) {
     const pointsTo = Stats.getLevel(level+1)-user.points.alltime
 
     ctx.fillStyle =  '#ffffffd0'
-    ctx.font = `bold 24px Whitney`
+    ctx.font = `bold 24px Trebuchet MS`
     ctx.fillText(`${pointsFrom}/${pointsFrom+pointsTo}`, 20, 25)
     const metrics = ctx.measureText(`-${pointsTo}/${Stats.getLevel(level+1)}`)
     ctx.fillText(`-${pointsTo}/${Stats.getLevel(level+1)}`, width-metrics.width-20, 25)

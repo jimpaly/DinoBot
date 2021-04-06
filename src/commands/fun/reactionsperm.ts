@@ -49,13 +49,13 @@ module.exports = class ReactionsPermCommand extends Command {
         status: string, channels: Collection<string, GuildChannel>[] }) {
         let channels = new Collection<string, GuildChannel>().concat(...channelsCollections)
         if(status === 'disable') {		// Disable a channel
-            channels.forEach(channel => Fun.disableReactionIn(channel.id))
+            Fun.disableReactionIn(...channels.map(channel => channel.id))
             return message.embed(await Discord.embed({
                 title: `🔴 Reactions are now disabled in the following channels!`,
                 description: channels.map(channel => `<#${channel.id}>`).join(' ')
             }))
         } else if(status === 'enable') {	// Enable a channel
-            channels.forEach(channel => Fun.enableReactionIn(channel.id))
+            Fun.enableReactionIn(...channels.map(channel => channel.id))
             return message.embed(await Discord.embed({
                 title: `🟢 Reactions are now enabled in the following channels!`,
                 description: channels.map(channel => `<#${channel.id}>`).join(' ')

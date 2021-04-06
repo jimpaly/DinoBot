@@ -61,13 +61,13 @@ module.exports = class ChannelPermCommand extends Command {
         if(status === 'disable') {		// Disable a channel
             if(channels.size > 1) channels = channels
                 .filter(channel => channel.id !== message.channel.id)
-            channels.forEach(channel => Config.disableChannel(channel.id))
+            Config.disableChannels(...channels.map(channel => channel.id))
             return message.embed(await Discord.embed({
                 title: `🔴 The following channels are now disabled!`,
                 description: channels.map(channel => `<#${channel.id}>`).join(' ')
             }))
         } else if(status === 'enable') {	// Enable a channel
-            channels.forEach(channel => Config.enableChannel(channel.id))
+            Config.enableChannels(...channels.map(channel => channel.id))
             return message.embed(await Discord.embed({
                 title: `🟢 The following channels are now enabled!`,
                 description: channels.map(channel => `<#${channel.id}>`).join(' ')

@@ -17,10 +17,7 @@ export interface ReplaceVars {
     profile?: _Profiles.Profile
 }
 
-/* 
- * Replaces keys in a string with data from the client
- * @param {string} str The string to replace
- */
+/* Replaces tags in the string with data from config and database */
 export async function replaceStr(str: string, vars: ReplaceVars = {}) {
     if(!vars.member && vars.message) vars.member = vars.message.member ?? vars.message.author
     str = _Config.replace(str)
@@ -33,6 +30,7 @@ export async function replaceStr(str: string, vars: ReplaceVars = {}) {
     return str
 }
 
+/** Replace tags in all strings of the object with data from config files and the database */
 export async function replace(obj: any, vars: ReplaceVars = {}) {
     if(!vars.member && vars.message) vars.member = vars.message.member ?? vars.message.author
     if(!vars.user) vars.user = await _Stats.get(vars.member?.id ?? '')

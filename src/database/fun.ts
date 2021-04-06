@@ -6,6 +6,7 @@ let config = {
     reaction: { channels: [''], members: [''] }
 }
 
+/** Checks if a message is a valid count. If not, deletes it */
 export async function handleCount(message: Message): Promise<any> {
 
     if(message.channel.id !== config.counting) return
@@ -31,6 +32,7 @@ export async function handleCount(message: Message): Promise<any> {
         return message.delete().catch(() => {})
 }
 
+/** Reacts to a message (owo and stuff) */
 export function react(message: Message) {
 
     if(!canReactIn(message.channel.id)) return
@@ -72,42 +74,53 @@ export function react(message: Message) {
     }
 }
 
+/** Load the minigames config file */
 export const readConfig = async () => {config = await Obj.readJSON('fun.json')}
+/** Save the minigames config file */
 export const saveConfig = () => Obj.saveJSON(config, 'fun.json')
+/** Get the counting channel ID */
 export const getCountingChannel = () => config.counting
+/** Set which channel the counting minigame is in */
 export function setCountingChannel(channel: string) {
     config.counting = channel
     saveConfig()
 }
+/** Check whether or not the bot will react to a member */
 export const canReactTo = (member: string) => !config.reaction.members.includes(member)
-export function disableReactionTo(member: string) {
-    if(!config.reaction.members.includes(member)) {
-        config.reaction.members.push(member)
-        saveConfig()
-    }
+/** Disable reactions to a member */
+export function disableReactionTo(...members: string[]) {
+    members.forEach(member => {
+        if(canReactTo(member)) config.reaction.members.push(member)
+    })
+    saveConfig()
 }
-export function enableReactionTo(member: string) {
-    const idx = config.reaction.members.indexOf(member)
-    if(idx > 0) {
-        config.reaction.members.splice(idx, 1)
-        saveConfig()
-    }
+/** Enable reactions to a member */
+export function enableReactionTo(...members: string[]) {
+    members.forEach(member => {
+        const idx = config.reaction.members.indexOf(member)
+        if(idx > 0) config.reaction.members.splice(idx, 1)
+    })
+    saveConfig()
 }
+/** Check whether the bot will react in a channel */
 export const canReactIn = (channel: string) => !config.reaction.channels.includes(channel)
-export function disableReactionIn(channel: string) {
-    if(!config.reaction.channels.includes(channel)) {
-        config.reaction.channels.push(channel)
-        saveConfig()
-    }
+/** disable reactions in a channel */
+export function disableReactionIn(...channels: string[]) {
+    channels.forEach(channel => {
+        if(canReactIn(channel)) config.reaction.channels.push(channel)
+    })
+    saveConfig()
 }
-export function enableReactionIn(channel: string) {
-    const idx = config.reaction.channels.indexOf(channel)
-    if(idx > 0) {
-        config.reaction.channels.splice(idx, 1)
-        saveConfig()
-    }
+/** Enable reactions in a channel */
+export function enableReactionIn(...channels: string[]) {
+    channels.forEach(channel => {
+        const idx = config.reaction.channels.indexOf(channel)
+        if(idx > 0) config.reaction.channels.splice(idx, 1)
+    })
+    saveConfig()
 }
 
+/** Replace tags in string with minigame variables */
 export async function replace(str: string, member?: Discord.User) {
     str = await Tools.replaceTags(str, 'counting', args => {
         if(args[0] === 'channel') return `<#${config.counting}>`

@@ -33,15 +33,7 @@ export function replace(str: string) {
 export const read = async () => {config = await Obj.readJSON('config.json')}
 let saveTimer: NodeJS.Timeout | null = null
 /** Save the config file */
-export const save = async () => {
-    if(saveTimer) {
-        clearTimeout(saveTimer)
-        saveTimer = setTimeout(() => { save(); saveTimer = null }, 1000)
-    } else {
-        saveTimer = setTimeout(() => saveTimer = null, 1000)
-        await Obj.saveJSON(config, 'config.json')
-    }
-}
+export const save = () => Obj.saveJSON(config, 'config.json')
 
 interface StatusOptions {
     message?: string,
@@ -78,17 +70,17 @@ export const setColor = (color: string) => { config.color = Draw.parseHex(color)
 /** Check whether the bot is configured to see a channel */
 export const isChannelEnabled = (channel: string) => !config.disabled.includes(channel)
 /** Enable a channel for the bot to see */
-export function enableChannel(channel: string) { 
-    const idx = config.disabled.indexOf(channel) 
-    if(idx >= 0) {
-        config.disabled.splice(idx, 1)
-        save()
-    }
+export function enableChannels(...channels: string[]) { 
+    channels.forEach(channel => {
+        const idx = config.disabled.indexOf(channel) 
+        if(idx >= 0) config.disabled.splice(idx, 1)
+    })
+    save()
 }
 /** Set a channel for the bot to ignore */
-export function disableChannel(channel: string) {
-    if(isChannelEnabled(channel)) {
-        config.disabled.push(channel)
-        save()
-    }
+export function disableChannels(...channels: string[]) {
+    channels.forEach(channel => {
+        if(isChannelEnabled(channel)) config.disabled.push(channel)
+    })
+    save()
 }

@@ -2,15 +2,28 @@ import * as Mongoose from 'mongoose'
 import { Time, Tools } from '../tools'
 
 export interface Profile extends Mongoose.Document {
-    _id: string
+    /** Unique identifier - Same as Discord user ID */    
+    _id: string 
+    /** The date the profile was created */
+    createdAt: Date
+    /** The date the profile was last updated */
+    updatedAt: Date
+    /** Whether or not the member is a bot */            
     bot: boolean
+    /** User-set bio to show on the profile card */
     bio: string
+    /** The background image url of the profile card */
     background: string
+    /** The timezone the member is in */
     timezone: string
+    /** All dates the member joined the server, including the inviter */
     joins: {
+        /** The date the member joined the server */
         date: Date
+        /** The inviter for the specific join */
         inviter: string | null
     }[]
+    /** Record a new guild join */
     addInviter(member?: string): Profile
 }
 
@@ -24,7 +37,7 @@ const profileSchema = new Mongoose.Schema<Profile, Mongoose.Model<Profile>>({
         date: { type: Date, default: new Date() },
         inviter: { type: String, default: null },
     }]
-})
+}, { timestamps: true })
 profileSchema.methods.addInviter = function (member?: string) {
     this.joins.push({ date: new Date(), inviter: member ?? null })
     this.updateOne({ 
@@ -35,12 +48,14 @@ profileSchema.methods.addInviter = function (member?: string) {
 
 const ProfileModel = Mongoose.model<Profile>('Profile', profileSchema)
 
+/** Get the profile of a member with member ID */
 export async function get(id: string) {
     let profile = await ProfileModel.findById(id).exec()
     if(!profile) return new ProfileModel({ _id: id })
     return profile
 }
 
+/** Replace tags in a string with profile variables */
 export async function replace(str: string, profile?: Profile) {
     if(profile) str = await Tools.replaceTags(str, 'member', async args => {
         if(args[0] === 'bio') {

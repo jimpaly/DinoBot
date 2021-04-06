@@ -31,60 +31,105 @@ interface Stat<T> {
     annual: T,
 }
 interface Rep {
+    /** Number of reps given to other members */
     given: number,
+    /** Number of reps received from other members */
     received: number,
 }
 interface Invite<T> {
+    /** All people invited, regardless if they left or not */
     joins: T,
+    /** Invites who are not in the guild anymore */
     leaves: T,
+    /** Invites who had left but came back */
     returns: T,
 }
 interface Daily {
+    /** Total daily rewards received, ignoring resets */
     total: number,
+    /** The current daily streak */
     current: number,
+    /** The highest daily streak achieved in the past */
     highest: number,
 }
 export interface UserStat extends Mongoose.Document {
+    /** Unique identifier - Same as Discord user ID */    
     _id: string
+    /** The date these stats were created */
     createdAt: Date
+    /** The date these stats were last updated */
     updatedAt: Date
+    /** The date stats were last reset (or checked for reset) */
     lastReset: Date
+    /** General points - used for the main leaderboard */
     points: Stat<number>,
+    /** Number of messages the member had sent */
     messages: Stat<number> & {
+        /** The date the member was last rewarded for message sending */
         lastReward: Date,
     }
+    /** Number of milliseconds the member had been in voice chats */
     voice: Stat<number> & {
+        /** The date the member was last rewarded for voice chatting */
         lastReward: Date, 
+        /** The date the member voice stats were last updated */
         lastUpdate: Date,
+        /** Whether the member is currently in a voice chat */
         inVoice: boolean,
     }
+    /** Stats for the member's daily streaks */
     daily: Omit<Stat<Daily>, 'alltime'> & Daily & {
+        /** The date the member last claimed their daily reward */
         nextReward: Date,
     }
+    /** Stats for the member's reputation giving and receiving */
     reps: Omit<Stat<Rep>, 'alltime'> & Rep & {
+        /** The number of reps stored */
         stored: number,
+        /** The date the member last gave rep to someone else */
         lastGiven: Date,
+        /** The last member this member gave rep to */
         lastReceiver: string,
+        /** The last member who gave rep to this member */
         lastGiver: string,
     }
+    /** Stats for the member's invites */
     invites: Omit<Stat<Invite<number>>, 'alltime'> & Invite<string[]>
+    /** Number of times the member bumped the server with Disboard */
     bumps: Stat<number>
+    /** Number of times the member counted in the counting channel */
     counts: Stat<number>
+    /** Get a stat with a more streamlined way. Takes care of checking alltime or specific options for you */
     getStat(stat: StatType, time: TimePeriod, option?: DailyType | RepsType | InviteDisplayType): number
+    /** Resets daily, weekly, monthly, and annual time periods, if they need to be reset */
     resetTimePeriods(): Promise<UserStat>
+    /** Add an amount to a stat */
     addStat(stats: StatType, amount: StatOptions | number): UserStat
+    /** Record a new message sent */
     addMessage(): UserStat
+    /** Update the voice stats */
     updateVoice(inVoice: boolean): UserStat
+    /** Claim the daily reward, if it is ready */
     claimDaily(): UserStat
+    /** Give rep to another member, if the cooldown is ready */
     giveRep(member: string): UserStat
+    /** Receive rep from another member */
     receiveRep(member: string): UserStat
+    /** Record a newly joined invite */
     addInvite(member: string): UserStat
+    /** Record an invite leaving */
     removeInvite(member: string): UserStat
+    /** Record a new count to the counting channel */
     addCount(): UserStat
+    /** Record a count being removed */
     removeCount(): UserStat
+    /** Record a new bump to the server by the member */
     addBump(): UserStat
+    /** Get the current level of the member */
     getLevel(levels?: number): number
+    /** Get the number of milliseconds until the member can give rep again */
     getRepCooldown(): number
+    /** Get the number of milliseconds until the member can claim their next daily reward */
     getDailyCooldown(): number
     
 }
@@ -347,7 +392,9 @@ userStatSchema.methods.claimDaily = function () {
     let doc: any = {}
     this.addStat('daily', { total: 1, current: 1, 
         highest: this.daily.highest == this.daily.current ? 1 : 0 })
-    this.addStat('points', config.daily[this.daily.current%7-1])
+    let day = (this.daily.current-1)%7
+    if(day === 6) this.addStat('reps', { stored: config.daily[day] })
+    else this.addStat('points', config.daily[day])
     if(this.getDailyCooldown() < -Time.day && this.daily.current > 0) timePeriods.forEach(time => {
         if(time === 'alltime') doc[`daily.current`] = this.daily.current = 1
         else doc[`daily.${time}.current`] = this.daily[time].current = 1
@@ -751,18 +798,18 @@ export function setLevel(level: number, points: number, save = true) {
     if(save) saveConfig()
 }
 export const isChannelEnabled = (channel: string) => !config.disabled.includes(channel)
-export function enableChannel(channel: string, save = true) {
-    const idx = config.disabled.indexOf(channel) 
-    if(idx >= 0) {
-        config.disabled.splice(idx, 1)
-        if(save) saveConfig()
-    }
+export function enableChannels(...channels: string[]) {
+    channels.forEach(channel => {
+        const idx = config.disabled.indexOf(channel) 
+        if(idx >= 0) config.disabled.splice(idx, 1)
+    })
+    saveConfig()
 }
-export function disableChannel(channel: string, save = true) {
-    if(isChannelEnabled(channel)) {
-        config.disabled.push(channel)
-        if(save) saveConfig()
-    }
+export function disableChannels(...channels: string[]) {
+    channels.forEach(channel => {
+        if(isChannelEnabled(channel)) config.disabled.push(channel)
+    })
+    saveConfig()
 }
 export const getLogChannel = () => config.logging.channel
 export function setLogChannel(channel: string) {
@@ -770,6 +817,7 @@ export function setLogChannel(channel: string) {
     saveConfig()
 }
 
+/** Replace tags in the string with stats variables/data */
 export async function replace(str: string, user?: UserStat) {
     if(user) str = await Tools.replaceTags(str, 'member', async args => {
         if(args.length == 0) return null
