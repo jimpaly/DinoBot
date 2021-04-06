@@ -45,8 +45,7 @@ export async function success(message: CommandoMessage, content: string, vars: R
 export async function replaceMember(str: string, member: User) {
     return await replaceTags(str, 'member', args => {
         if(args[0] === 'name') {
-			if(member instanceof Discord.User) return member.username
-            return member.displayName
+			return getName(member)
         } else if(args[0] === 'avatar') {
 			const sizes: Discord.ImageSize[] = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
 			let size = sizes.find(s => s >= parseInt(args[1])) ?? 256
@@ -213,4 +212,9 @@ export async function getInviteLinks(member: User) {
 			max: invite.maxUses,
 			expire: invite.expiresTimestamp,
 		}})
+}
+/** Get the name/nickname of a discord user or member */
+export function getName(member: User) {
+	if(member instanceof Discord.User) return member.username
+	return member.displayName
 }
