@@ -11,6 +11,7 @@ let config = {
     disabled: [""],
 }
 
+/** Replace tags in string with config variables */
 export function replace(str: string) {
 
     //Prefix
@@ -28,36 +29,55 @@ export function replace(str: string) {
     return str
 }
 
+/** Load the config file */
 export const read = async () => {config = await Obj.readJSON('config.json')}
-export const save = () => Obj.saveJSON(config, 'config.json')
+let saveTimer: NodeJS.Timeout | null = null
+/** Save the config file */
+export const save = async () => {
+    if(saveTimer) {
+        clearTimeout(saveTimer)
+        saveTimer = setTimeout(() => { save(); saveTimer = null }, 1000)
+    } else {
+        saveTimer = setTimeout(() => saveTimer = null, 1000)
+        await Obj.saveJSON(config, 'config.json')
+    }
+}
 
 interface StatusOptions {
     message?: string,
     mode?: string,
 }
+/** Get the bot activity status to display */
 export function getStatus(): ActivityOptions {
     return { 
         name: config.status.message, 
         type: config.status.mode as ActivityType,
     }
 }
+/** Set a new bot activity status */
 export function setStatus(options: StatusOptions) {
     config.status.message = options.message ?? config.status.message
     config.status.mode = options.mode ?? config.status.mode
     save()
 }
 
+/** Get the bot prefix */
 export const getPrefix = () => config.prefix
+/** Set a new bot prefix */
 export const setPrefix = (prefix: string) => { 
     config.prefix = prefix.trim();
     (Discord.guild.client as CommandoClient).commandPrefix = config.prefix
     save() 
 }
 
+/** Get the bot color (used for embeds) */
 export const getColor = () => config.color
+/** Set the bot color (used for embeds) */
 export const setColor = (color: string) => { config.color = Draw.parseHex(color); save() }
 
+/** Check whether the bot is configured to see a channel */
 export const isChannelEnabled = (channel: string) => !config.disabled.includes(channel)
+/** Enable a channel for the bot to see */
 export function enableChannel(channel: string) { 
     const idx = config.disabled.indexOf(channel) 
     if(idx >= 0) {
@@ -65,6 +85,7 @@ export function enableChannel(channel: string) {
         save()
     }
 }
+/** Set a channel for the bot to ignore */
 export function disableChannel(channel: string) {
     if(isChannelEnabled(channel)) {
         config.disabled.push(channel)
