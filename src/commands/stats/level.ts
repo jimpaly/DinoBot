@@ -61,6 +61,7 @@ function makeLevelingCard(user: Stats.UserStat) {
     const pointsFrom = user.points.alltime-Stats.getLevel(level)
     const pointsTo = Stats.getLevel(level+1)-user.points.alltime
 
+    // Points text
     ctx.fillStyle =  '#ffffffd0'
     ctx.font = `bold 24px Trebuchet MS`
     ctx.fillText(`${pointsFrom}/${pointsFrom+pointsTo}`, 20, 25)
@@ -70,28 +71,32 @@ function makeLevelingCard(user: Stats.UserStat) {
     const barY = 35
     const barHeight = height-35
 
+    // Outline/clipping mask
     ctx.beginPath()
     ctx.arc(10+barHeight/2, barY+barHeight/2, barHeight/2, Math.PI/2, Math.PI*3/2)
-    // ctx.rect(10+barHeight/2, barY, width-20-barHeight, barHeight)
     ctx.arc(width-10-barHeight/2, barY+barHeight/2, barHeight/2, Math.PI*3/2, Math.PI/2, false)
     ctx.lineTo(10+barHeight/2, barY+barHeight)
     ctx.clip()
     
+    // Progress bar background
     ctx.fillStyle = '#9a5fbb50'
     ctx.fillRect(10, barY, width-20, barHeight)
 
+    // Progress bar fill
     let fillGradient = ctx.createLinearGradient(0, 0, width, 0)
     fillGradient.addColorStop(0, '#8242c4')
     fillGradient.addColorStop(1, '#ce79e1')
     ctx.fillStyle = fillGradient
     ctx.fillRect(10, barY, pointsFrom / (pointsFrom+pointsTo) * (width-20), barHeight)
 
+    // Outline border
     let borderGradient = ctx.createLinearGradient(0, 0, width, 0)
     borderGradient.addColorStop(0, '#ad79e1')
     borderGradient.addColorStop(1, '#e3beec')
     ctx.strokeStyle = borderGradient
     ctx.lineWidth = 5
     ctx.stroke()
+    
     ctx.closePath()
 
     return canvas.toBuffer()

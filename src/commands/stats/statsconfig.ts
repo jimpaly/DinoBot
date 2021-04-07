@@ -51,7 +51,9 @@ module.exports = class StatsConfigCommand extends Command {
 
     async run(message: CommandoMessage, { option, args }: { option: string, args: string[] }) {
         let category = Stats.resolveStat(option)
+
         if(['', 'show', 'list', 'all', 'settings'].includes(option)) {
+            // List the main stats settings
             return message.embed(await Discord.embed({
                 title: 'Stats Configuration',
                 fields: Stats.statTypes.filter(stat => !['points', 'daily'].includes(stat))
@@ -64,6 +66,7 @@ module.exports = class StatsConfigCommand extends Command {
                 }})
             }))
         } else if(category === 'messages' || category === 'voice') {
+            // Set the stats with a range and cooldown
             Stats.setStat(category, { 
                 min: Tools.parseNumber(args[0]),
                 max: Tools.parseNumber(args[1]),
@@ -76,6 +79,7 @@ module.exports = class StatsConfigCommand extends Command {
                     {stats.${category}.cooldown}`
             }))
         } else if(category === 'reps') {
+            // Set the reps settings
             Stats.setStat('reps', {
                 give: Tools.parseNumber(args[1]),
                 receive: Tools.parseNumber(args[2]),
@@ -88,8 +92,19 @@ module.exports = class StatsConfigCommand extends Command {
                     {stats.reps.receive} (receive)
                     {stats.reps.cooldown}`
             }))
-        } else if(['invites', 'bumps', 'counts'].includes(category ?? '')) {
-            Stats.setStat(category as 'invites'|'bumps'|'counts', {
+        } else if(category === 'invites') {
+            // Set the invite settings
+            Stats.setStat('invites', {
+                join: Tools.parseNumber(args[1]),
+                leave: Tools.parseNumber(args[2]),
+            })
+            return message.embed(await Discord.embed({
+                title: 'Invites Settings',
+                description: `{stats.invites}`
+            }))
+        } else if(category === 'bumps' || category === 'counts') {
+            // Set the stats with only a set point increase
+            Stats.setStat(category, {
                 amount: Tools.parseNumber(args[1]),
             })
             return message.embed(await Discord.embed({
@@ -97,6 +112,7 @@ module.exports = class StatsConfigCommand extends Command {
                 description: `{stats.${category}}`,
             }))
         } else if(option === 'daily') {
+            // Set daily rewards
             args.slice(0, 7).forEach((arg, idx) => {
                 if(Tools.isNumber(arg)) Stats.setDaily(idx+1, parseInt(arg), false)
             })
@@ -106,6 +122,7 @@ module.exports = class StatsConfigCommand extends Command {
                 description: `{stats.daily}`,
             }))
         } else if(['levels', 'level', 'leveling'].includes(option)) {
+            // Set level requirements
             if(Tools.isNumber(args[0])) args.slice(1).forEach((arg, idx) => {
                 if(Tools.isNumber(arg)) Stats.setLevel(parseInt(args[0])+idx, parseInt(arg), false)
             }) 
@@ -115,6 +132,7 @@ module.exports = class StatsConfigCommand extends Command {
                 description: `{stats.levels}`,
             }))
         } else if(['channel', 'channels', 'perm', 'perms'].includes(option)) {
+            // Set channel perms for stats collection
             const status = args.splice(0, 1)[0] ?? ''
             let channels = new Collection<string, GuildChannel>()
             .concat(...args.map(arg => Discord.findChannels(arg)))
@@ -137,6 +155,7 @@ module.exports = class StatsConfigCommand extends Command {
                     channel => `${Stats.isChannelEnabled(channel.id) ? '🟢' : '🔴'} {channel}`)
             }
         } else if(['log', 'logging', 'logs'].includes(option)) {
+            // Set the logging channel
             let channel = Discord.findChannel(args[0])
             if(channel) Stats.setLogChannel(channel.id)
             return message.embed(await Discord.embed({

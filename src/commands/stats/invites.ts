@@ -46,9 +46,11 @@ module.exports = class InvitesCommand extends Command {
     onError = (err: Error, message: CommandoMessage) => Discord.error(message, err)
 
     async run(message: CommandoMessage, { category, member }: 
-        { category: string, member: Discord.User }) {   // Add left category... somewhere
-        if(!member) member = message.member ?? message.author
-        if(!category) {
+        { category: Stats.InviteDisplayType | '', member: Discord.User }) {
+        if(!member) member = message.member ?? message.author 
+
+        if(!category) { // If no category is mentioned, list invite links
+
             let list = await message.say('Loading links...')
             let invites = (await Discord.guild.fetchInvites())
                 .filter(({inviter}) => inviter?.id === member.id)
@@ -70,21 +72,28 @@ module.exports = class InvitesCommand extends Command {
                         'never', 6, 'left')}\`
                 `).join('\n') : ';-; no invites',
             }, {message}))
+
         } else {
+
             let list = await message.say('Loading invites...')
             const inviteStats = (await Stats.get(member.id)).invites
-            let invites = inviteStats.joins
-            if(category !== 'joined') invites = invites.filter(inv => !inviteStats.leaves.includes(inv))
-            if(category === 'stayed') invites = invites.filter(inv => !inviteStats.returns.includes(inv))
-            Discord.page(list, Math.ceil(invites.length/10), page => Discord.embed({
-                title: `${new Map([
-                    ['joined','All'], ['here','Currently Present'], ['stayed','Always Stayed']
-                ]).get(category)} Invites of {member.name}`,
+
+            let invites: string[] = []  // Get the specific category of invites
+            if(category === 'joined') invites = inviteStats.joins
+            else if(category === 'left') invites = inviteStats.leaves
+            else if(category === 'here') invites = inviteStats.joins.filter(invite => 
+                !inviteStats.leaves.includes(invite))
+            else if(category === 'stayed') invites = inviteStats.joins.filter(invite =>  
+                !inviteStats.leaves.includes(invite) && !inviteStats.returns.includes(invite))
+                Stats.inviteDisplayTypes
+            return Discord.page(list, Math.ceil(invites.length/10), page => Discord.embed({
+                title: `${['All', 'Left', 'Currently Present', 'Always Stayed']
+                    [Stats.inviteDisplayTypes.indexOf(category)]} Invites of {member.name}`,
                 thumbnail: { url: '{member.avatar}' },
                 description: invites.length > 0 ? invites.slice((page-1)*10, page*10)
                     .map(invite => `<@!${invite}>`).join('\n') : ';-; no invites',
             }, { member }))
-            return list
+
         }
     }
 }

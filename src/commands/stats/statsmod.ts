@@ -55,15 +55,16 @@ module.exports = class StatsModCommand extends Command {
     async run(message: CommandoMessage, { command, member, amount, options }: 
     { command: 'set'|'add', member: Discord.User, amount: number, options: string[] }) {
 
+        // Get the stat
         let idx = options.findIndex(option => Stats.resolveStat(option.toLowerCase()) !== null)
         if(idx < 0) return Discord.fault(message, `You didn't enter a stat!`)
         const stat = Stats.resolveStat(options.splice(idx, 1)[0]) ?? 'points'
 
+        // Get the time period
         idx = options.findIndex(option => (Stats.timePeriods as string[]).includes(option.toLowerCase()))
         const time = idx < 0 ? 'alltime' : options.splice(idx, 1)[0] as Stats.TimePeriod
 
-        let user = await Stats.get(member.id)
-
+        // Get the stat option
         let amt: Stats.StatOptions = {}
         if(stat === 'daily') {
             const option = options.find(option => ['total','current','highest'].includes(option.toLowerCase()))
@@ -78,10 +79,13 @@ module.exports = class StatsModCommand extends Command {
             amt.amount = amount
         }
 
+        let user = await Stats.get(member.id)
+
         let messages: CommandoMessage[] = []
         messages.push(await message.embed(await Discord.embed(Stats.statCard(stat), {message, user}), '**Before:**'))
 
         if(command === 'set') {
+            // Set stat to a specific number
             if(stat === 'daily') {
                 let daily = time === 'alltime' ? user.daily : user.daily[time]
                 if(amt.total) daily.total = amt.total
@@ -104,7 +108,9 @@ module.exports = class StatsModCommand extends Command {
                 if(amt.amount) user[stat][time] = amt.amount
             }
             user.save()
+
         } else {
+            // Add to the stat across all time periods
             user.addStat(stat, amt)
         }
         

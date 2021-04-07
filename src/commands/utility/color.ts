@@ -33,7 +33,9 @@ module.exports = class ColorSetCommand extends Command {
 
     async run(message: CommandoMessage, { color }: { color: string }) {
 
+        // Set the color to the color config file
         if(color) Config.setColor(color)
+        // Send the new color image
         return message.embed(await Discord.embed({
             title: 'Color is set to: {color}',
             image: { url: 'attachment://color.jpg' }

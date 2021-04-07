@@ -43,7 +43,7 @@ module.exports = class HelpCommand extends Command {
 
     async run(message: CommandoMessage, { command }: { command: Command }) {
 
-        if(command) {
+        if(command) {   // If a command is mentioned, send info about that command
             return message.embed(await Discord.embed({
                 title: command.description,
                 description: command.details,
@@ -62,7 +62,7 @@ module.exports = class HelpCommand extends Command {
                     `
                 }]
             }))
-        } else {
+        } else {    // If no command is mentioned list all commands
             return message.embed(await Discord.embed({
                 title: 'All Commands',
                 description: "Use `{prefix}help <command>` to show how to use a specific command.",

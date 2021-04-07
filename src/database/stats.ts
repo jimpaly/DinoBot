@@ -497,6 +497,7 @@ userStatSchema.post('updateOne', doc => {
 
 export const UserStatModel = Mongoose.model<UserStat>("UserStat", userStatSchema)
 
+/** Get a member's stats from their member ID */
 export async function get(id: string) {
     let user = await UserStatModel.findById(id).exec() 
     if(user === null) return new UserStatModel({ _id: id })
@@ -519,6 +520,7 @@ export async function get(id: string) {
     // userCache.user.resetTimePeriods()
     // return userCache.user
 }
+/** Get multiple members' stats from member ID */
 export async function getMany(ids: string[], callback: (user: UserStat) => any) {
     ids = [...new Set(ids)].filter(id => id !== '')
     return new Promise((resolve, reject) => {
@@ -536,9 +538,13 @@ export async function getMany(ids: string[], callback: (user: UserStat) => any) 
         })
     })
 }
+/** Get the total number of members with recorded stats */
 export async function count() {
     return await UserStatModel.countDocuments()
 }
+/** Get the stats collection in a more "points-friendly" format\
+ *  Total reps and daily are put into an alltime category, and invites are converted from array to number 
+ */
 export function getScores() {
     const agg = (stat: StatType, time: TimePeriod) => {
         const timeStr = time === 'alltime' ? '' : `.${time}`
@@ -615,6 +621,7 @@ export function getScores() {
         as: 'profiles'
       }).project(aggregation)
 }
+/** Get the place someone is on the leaderboard in a stat */
 export async function getPlace(stat: string, score: number) {
     const match: any = {}; match[stat] = { $gt: score }
     const place = (await getScores().match(match).count('count'))
@@ -623,6 +630,7 @@ export async function getPlace(stat: string, score: number) {
     return place[0].count+1 as number
 }
 
+/** Get the embed card for a stat */
 export function statCard(stat: StatType | 'all'): MessageEmbedOptions {
     if(stat === 'all') return {
         title: `Stats of {member.name}`,
@@ -665,6 +673,7 @@ export function statCard(stat: StatType | 'all'): MessageEmbedOptions {
     }
 }
 
+/** Checks if a message is a bump success. If yes, record it */
 export async function handleBump(message: Message) {
     if(message.guild?.id !== Discord.guild.id) return
     if(message.author.id === '302050872383242240') {
@@ -678,6 +687,7 @@ export async function handleBump(message: Message) {
     }
 }
 
+/** Log a message to the logging channel */
 export async function log(note: string, mentions: string[], pings: string[]) {
     let channel = Discord.findChannel(getLogChannel()) as TextChannel | NewsChannel
     if(!channel || (channel.type !== 'text' && channel.type !== 'news')) return
@@ -687,6 +697,7 @@ export async function log(note: string, mentions: string[], pings: string[]) {
     updateLeaderboard(false)
 }
 let lbUpdate = true, lbResend = true
+/** Update the live leaderboard in the logging channel */
 async function updateLeaderboard(edit = true): Promise<void> {
 	if(!lbUpdate) {
         if(!edit && lbResend) {
@@ -749,8 +760,11 @@ async function updateLeaderboard(edit = true): Promise<void> {
 	saveConfig()
 }
 
+/** Load the stats config file */
 export const readConfig = async () => {config = await Obj.readJSON('stats.json')}
+/** Save the stats config file */
 export const saveConfig = () => Obj.saveJSON(config, 'stats.json')
+/** Get the reward amount for a stat */
 export function getReward(stat: Exclude<StatType,'points'>) {
     if(stat === 'messages' || stat === 'voice') {
         return config[stat].points
@@ -758,7 +772,9 @@ export function getReward(stat: Exclude<StatType,'points'>) {
         return config[stat as 'reps'|'invites'|'bumps'|'counts']
     }
 }
+/** Get the reward cooldown time in milliseconds for a stat */
 export const getCooldown = (stat: 'messages'|'voice'|'reps') => config[stat].cooldown
+/** Set the reward config for a stat */
 export function setStat(stat: Exclude<StatType,'points'|'daily'>, value: { 
     amount?: number, 
     cooldown?: number, 
@@ -784,12 +800,17 @@ export function setStat(stat: Exclude<StatType,'points'|'daily'>, value: {
     }
     saveConfig()
 }
-export const getDaily = (day: number) => config.daily[day-1]
+/** Get the daily reward for a day from 1-7 */
+export const getDaily = (day: number) => config.daily[Math.max(0, Math.min(6, day-1))]
+/** Set the daily reward for a day from 1-7 */
 export function setDaily(day: number, reward: number, save = true) {
     config.daily[Math.max(0, Math.min(6, day-1))] = reward
     if(save) saveConfig()
 }
+
+/** Get the amount of points to reach a certain level */
 export const getLevel = (level: number) => config.levels[level-1]
+/** Set the amount of points needed to reach a certain level */
 export function setLevel(level: number, points: number, save = true) {
     config.levels[level] = points
     config.levels[0] = config.levels[0] ?? 0
@@ -797,7 +818,9 @@ export function setLevel(level: number, points: number, save = true) {
         config.levels[i] = Math.max(config.levels[i] ?? 0, config.levels[i-1])
     if(save) saveConfig()
 }
+/** Check whether a channel is enabled for collecting stats */
 export const isChannelEnabled = (channel: string) => !config.disabled.includes(channel)
+/** Enable a channel for recording stats */
 export function enableChannels(...channels: string[]) {
     channels.forEach(channel => {
         const idx = config.disabled.indexOf(channel) 
@@ -805,13 +828,16 @@ export function enableChannels(...channels: string[]) {
     })
     saveConfig()
 }
+/** Disable a channel for recording stats */
 export function disableChannels(...channels: string[]) {
     channels.forEach(channel => {
         if(isChannelEnabled(channel)) config.disabled.push(channel)
     })
     saveConfig()
 }
+/** Get the channel used for logging rewards and stuff */
 export const getLogChannel = () => config.logging.channel
+/** Set the channel used for logging rewards */
 export function setLogChannel(channel: string) {
     config.logging.channel = channel
     saveConfig()

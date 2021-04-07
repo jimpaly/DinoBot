@@ -58,7 +58,7 @@ module.exports = class ChannelPermCommand extends Command {
     async run(message: CommandoMessage, { status, channels: channelsCollections }: { 
         status: string, channels: Collection<string, GuildChannel>[] }) {
         let channels = new Collection<string, GuildChannel>().concat(...channelsCollections)
-        if(status === 'disable') {		// Disable a channel
+        if(status === 'disable') {		// Disable the channels
             if(channels.size > 1) channels = channels
                 .filter(channel => channel.id !== message.channel.id)
             Config.disableChannels(...channels.map(channel => channel.id))
@@ -66,7 +66,7 @@ module.exports = class ChannelPermCommand extends Command {
                 title: `🔴 The following channels are now disabled!`,
                 description: channels.map(channel => `<#${channel.id}>`).join(' ')
             }))
-        } else if(status === 'enable') {	// Enable a channel
+        } else if(status === 'enable') {	// Enable the channels
             Config.enableChannels(...channels.map(channel => channel.id))
             return message.embed(await Discord.embed({
                 title: `🟢 The following channels are now enabled!`,

@@ -26,14 +26,20 @@ module.exports = class DailyCommand extends Command {
     onError = (err: Error, message: CommandoMessage) => Discord.error(message, err)
 
     async run(message: CommandoMessage) {
+
         let user = await Stats.get(message.author.id)
         let cooldown = user.getDailyCooldown()
         let streak = user.daily.current
+
         user.claimDaily()
+
+        // Send a log
         if(cooldown < 0) Stats.log(oneLine`
             <@!${user._id}> just claimed their daily 
             reward of {stats.daily.${(user.daily.current-1)%7+1}}
         `, [user._id], [])
+
+        // Send stats about the member's daily rewards
         return message.embed(await Discord.embed({
             title: `Daily Streak Stats of {member.name}`,
             description: stripIndents`
@@ -41,7 +47,7 @@ module.exports = class DailyCommand extends Command {
                     `Oh no! You lost your daily streak at ${streak}` : ''}
                 ${cooldown < 0 ? 
                     `👍 Daily reward received! (+{stats.daily.${(user.daily.current-1)%7+1}})` : ''}
-                Your daily reward will be ready in {member.daily.cooldown}`,
+                Your next reward will be ready in {member.daily.cooldown}`,
             thumbnail: {url: '{member.avatar}'},
             fields: [{
                 name: 'Current Streak',

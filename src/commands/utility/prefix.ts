@@ -31,10 +31,11 @@ module.exports = class PrefixCommand extends Command {
     }
 
     async run(message: CommandoMessage, { prefix }: { prefix: string }) {
-        if(prefix && message.member?.hasPermission('ADMINISTRATOR')) {
+        // If a new prefix is mentioned, set the new prefix
+        if(prefix && message.member?.hasPermission('ADMINISTRATOR')) {  
             Config.setPrefix(prefix)
             return message.embed(await Discord.embed({ description: 'Changed the prefix to `{prefix}`' }))
-        } else {
+        } else {    // If no new prefix is mentioned, just show the current prefix
             return message.embed(await Discord.embed({ description: 'Current prefix: `{prefix}`' }))
         }
     }

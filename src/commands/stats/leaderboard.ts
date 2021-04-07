@@ -38,14 +38,16 @@ module.exports = class LeaderboardCommand extends Command {
 
     async run(message: CommandoMessage, { options }: { options: string[] }) {
 
+        // Get the stat
         let idx = options.findIndex(option => Stats.resolveStat(option) !== null)
         const stat: Stats.StatType = idx < 0 ? 'points' : Stats.resolveStat(options.splice(idx, 1)[0]) ?? 'points'
 
+        // Get the time period
         idx = options.findIndex(option => Stats.resolveTime(option) !== null)
         const time: Stats.TimePeriod = idx < 0 ? 'monthly' : Stats.resolveTime(options.splice(idx, 1)[0]) ?? 'monthly'
 
+        // Get the stat option
         let option: Stats.DailyType | Stats.RepsType | Stats.InviteDisplayType | '' = ''
-        
         if(stat === 'daily') {
             const opt = options.find(option => Stats.resolveDailyType(option))
             option = Stats.resolveDailyType(opt ?? '') ?? 'current'
@@ -57,16 +59,19 @@ module.exports = class LeaderboardCommand extends Command {
             option = Stats.resolveInviteDisplayType(opt ?? '') ?? 'joined'
         }
 
+        // Parse stat, time period, and option into single string
         let statStr: string = `${stat}.${time}`
         if(option) statStr += `.${option}`
-        //if(stat !== 'invites' && option !== 'left') statStr = `-${statStr}`
 
+        // Make the leaderboard
         let lb = await message.say('Loading leaderboard...')
         return Discord.page(lb, Math.ceil((await Stats.count())/10), async page => {
+
             const users = await Stats.getScores().sort(`-${statStr}`).skip((page-1)*10).limit(10)
             const user = await Stats.get(message.author.id)
             const place = await Stats.getPlace(statStr, user.getStat(stat, time, option||undefined))
             const count = await Stats.count()
+            
             return Discord.embed({  // TODO: better description
                 title: (['', 'Daily', 'Weekly', 'Monthly', 'Annual'][Stats.timePeriods.indexOf(time)]) +
                     ' ' + (['Leveling', 'Messaging', 'Voice Chat', 'Daily', 'Reputation', 'Invite', 

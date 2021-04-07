@@ -18,7 +18,7 @@ module.exports = class PingCommand extends Command {
 		});
 	}
 
-	async run(message: CommandoMessage) {
+	async run(message: CommandoMessage) {	// Copied from Commando's ping command. It does what it does
 		const pingMsg = await message.say('Pinging...');
 		return pingMsg.edit('', {embed: await Discord.embed({
 			title: 'Pong!',

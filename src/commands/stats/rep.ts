@@ -30,7 +30,8 @@ module.exports = class RepCommand extends Command {
     onError = (err: Error, message: CommandoMessage) => Discord.error(message, err)
     
     async run(message: CommandoMessage, { member }: { member: Discord.User }) {
-        if(!member) {
+
+        if(!member) {   // If no member is mentioned, send personal rep stats
             return message.embed(await Discord.embed({
                 title: `Rep Status of {member.name}`,
                 thumbnail: { url: '{member.avatar}' },
@@ -51,34 +52,40 @@ module.exports = class RepCommand extends Command {
                     inline: true
                 }]
             }, { message }))
-        } else {
+
+        } else {    // If member is mentioned, Attempt to give rep to that member
             const user = await Stats.get(message.author.id)
-            if(user.getRepCooldown() > 0) {
+
+            if(user.getRepCooldown() > 0) { // Cooldown is not ready yet
                 return Discord.fault(message, oneLine`Please wait {member.reps.cooldown} 
                 until you can give rep again!`, { message })
-            } if(user.reps.stored <= 0) {
+            } if(user.reps.stored <= 0) {   // Not enough rep stored to give
                 return Discord.fault(message, `You don't have any rep left to give!`)
-            } else if(member.id === user.reps.lastReceiver) {
+            } else if(member.id === user.reps.lastReceiver) {   // Giving to the same member again
                 return Discord.fault(message, oneLine`You can't give rep 
                 to the same person twice in a row! Try someone else!`)
-            } else if(member.id === user.reps.lastGiver) {
+            } else if(member.id === user.reps.lastGiver) {  // Giving back to the member who last gave you
                 return Discord.fault(message, oneLine`Why are you giving the rep 
                 back to the person who gave it to you? Try someone else!`)
-            } else if(member.id === message.author.id) {
+            } else if(member.id === message.author.id) {    // Giving rep to yourself
                 return Discord.fault(message, `You can't give rep to yourself!`)
             } else {
+
                 user.giveRep(member.id)
                 const receiver = await Stats.get(member.id)
                 receiver.receiveRep(message.author.id)
+
                 Stats.log(oneLine`
                     <@!${user._id}> (+{stats.reps.give} points) just gave a rep
                     to <@!${receiver._id}> (+{stats.reps.receive} points)!
                 `, [user._id], [receiver._id])
+
                 return message.embed(await Discord.embed({
                     title: 'Rep Given!',
                     description: stripIndent`Given to <@!${member.id}>
                         You now have {member.reps.stored} rep left to give`
                 }, {message}))
+
             }
         }
     }
