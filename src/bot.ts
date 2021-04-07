@@ -131,6 +131,8 @@ import { Discord, Obj } from './tools'
 			// If it's their first message, create a profile
 			let profile = await Profiles.get(message.member.id)
 			if(profile.joins.length == 0) profile.addInviter() 
+			if(profile.joins.length == 1 && message.member.joinedAt) 
+				profile.joins[0].date = message.member.joinedAt
 		}
 	});
 
