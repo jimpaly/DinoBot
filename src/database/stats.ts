@@ -693,7 +693,8 @@ export async function log(note: string, mentions: string[], pings: string[]) {
     if(!channel || (channel.type !== 'text' && channel.type !== 'news')) return
     let message = await channel.send(pings.map(ping => `<@!${ping}>`).join(' '), 
     { embed: await Discord.embed({ description: note, timestamp: Date.now() })})
-    message.edit(pings.concat(mentions).map(ping => `<@!${ping}>`).join(' '))
+    message.edit(pings.concat(mentions).map(ping => `<@!${ping}>`).join(' '), 
+    { embed: await Discord.embed({ description: note, timestamp: Date.now() })})
     updateLeaderboard(false)
 }
 let lbUpdate = true, lbResend = true

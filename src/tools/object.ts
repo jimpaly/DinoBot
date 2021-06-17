@@ -94,7 +94,7 @@ export function readJSON(file: string) {
 			try { resolve(JSON.parse(str)) }
 			catch(err) { reject(err) }
 		})
-	}).catch(err => console.log(`fault reading file ${file}:`, err))
+	}).catch(err => console.error(`fault reading file ${file}:`, err))
 }
 /** saves an object to a JSON file, relative to `configuration/` */
 export function saveJSON(object: object, file: string) {
@@ -103,5 +103,5 @@ export function saveJSON(object: object, file: string) {
 			if(err) reject(err)
 			else resolve()
 		})
-	}).catch(err => console.log(`fault writing file ${file}:`, err))
+	}).catch(err => console.error(`fault writing file ${file}:`, err))
 }
