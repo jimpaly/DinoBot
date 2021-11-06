@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-      "experimentalDecorators": true,
       "outDir": "./output",
       "module": "CommonJS",
       "target": "ESNext",
@@ -9,9 +8,7 @@
       "noEmitOnError": true,
       "noImplicitAny": true,
       "strictNullChecks": true,
-      "noImplicitThis": true,
-      "esModuleInterop": true
+      "noImplicitThis": true
     },
-    "include": ["./src/**/*"],
-    "files": ["src/global.d.ts"]
+    "include": ["./src/**/*"]
 }

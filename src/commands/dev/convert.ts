@@ -1,16 +1,27 @@
-import {SlashCommandBuilder} from '@discordjs/builders'
-import {CommandInteraction, Message} from 'discord.js'
+import { CommandoClient, Command, CommandoMessage } from "discord.js-commando"
 import { Discord } from '../../tools'
-import { ApplyOptions } from '@sapphire/decorators';
-import { CommandOptions } from '@sapphire/framework';
 
-import { Command } from '../../tools/command'
+module.exports = class DailyCommand extends Command {
 
-const command: Command = {
-    name: 'convert',
-    description: '',
-    async execute() {
-        return 'command is disabled';
+    constructor(client: CommandoClient) {
+        super(client, {
+            name: 'convert',
+            group: 'dev',
+            memberName: 'convert',
+            description: 'JSON to MongoDB Convert',
+            details: `Convert the data stored in the JSON files to the MongoDB`,
+			examples: [
+				"`{prefix}convert` convert the files",
+			],
+            hidden: true,
+            ownerOnly: true,
+        })
+    }
+
+    onError = (err: Error, message: CommandoMessage) => Discord.error(message, err)
+
+    async run(message: CommandoMessage) {
+        return message.say('command is disabled')
         // const stats = (await Obj.readJSON('../data/levels.json')).stats
         // const oldTypes = ['points', 'messages', 'voice', 'streak', 'rep', 'invite', 'bumps', 'counting']
         // for(const id in stats) {
@@ -58,6 +69,7 @@ const command: Command = {
         //     user.lastReset = new Date(stats[id].lastUpdate || 0)
         //     user.save()
         // }
+
         // const profiles = (await Obj.readJSON('../data/profiles.json')).profiles
         // for(const id in profiles) {
         //     let profile = await Profiles.get(id)
@@ -73,7 +85,7 @@ const command: Command = {
         //     profile.bot = profiles[id].bot ?? false
         //     profile.save()
         // }
+
         // return message.say('done!')
-    },
+    }
 }
-export default command
