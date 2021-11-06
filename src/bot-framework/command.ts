@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders"
 import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
 import { CommandInteraction, Message } from "discord.js"
+import { ArgOption, ArgOptionOptions, Args, SlashArgs, SubCommand, TextArgs } from "."
 
 
 export type CommandUserPermission = 'public' | 'admin' | 'owner'
@@ -16,8 +17,9 @@ export interface CommandOptions {
 	permission?: CommandUserPermission
 	channel?: CommandChannelPermission
 	type?: CommandType
-	// args?: Argument[] TODO
-	execute: (args: string[]) => Promise<string>
+	args?: ArgOptionOptions[]
+	subCommands?: SubCommand[]
+	execute: (args: Args) => Promise<string>
 }
 
 export class Command {
@@ -29,8 +31,10 @@ export class Command {
 	permission: CommandUserPermission
 	channel: CommandChannelPermission
 	type: CommandType
-	// args: Argument[] TODO
-	execute: (args: string[]) => Promise<string>
+	args: ArgOption[]
+	subCommands: SubCommand[]
+
+	execute: (args: Args) => Promise<string>
 
 	constructor(options: CommandOptions) {
 		this.name = options.name
@@ -41,7 +45,8 @@ export class Command {
 		this.permission = options.permission ?? 'public'
 		this.channel = options.channel ?? 'all'
 		this.type = options.type ?? 'text'
-		// TODO: args
+		this.args = options.args?.map(arg => new ArgOption(arg)) ?? []
+		this.subCommands = options.subCommands ?? []
 		this.execute = options.execute
 	}
 
@@ -49,13 +54,20 @@ export class Command {
 		const command = new SlashCommandBuilder()
 			.setName(this.name)
 			.setDescription(this.description)
+		for (const arg of this.args) {
+			if (arg.type === 'string') 				command.addStringOption(option => arg.setSlashOption(option))
+			else if (arg.type === 'number') 	command.addNumberOption(option => arg.setSlashOption(option))
+			else if (arg.type === 'user') 			command.addUserOption(option => arg.setSlashOption(option))
+			else if (arg.type === 'member') 		command.addUserOption(option => arg.setSlashOption(option))
+			else if (arg.type === 'channel') command.addChannelOption(option => arg.setSlashOption(option))
+		}
 		return command.toJSON()
 	}
 
-	matchesKeyword(keyword: string) {
-		keyword = keyword.toLowerCase()
-		return this.name.toLowerCase() === keyword 
-				|| this.aliases.some(alias => alias.toLowerCase() === keyword)
+	findKeyword(text: string) {
+		text = text.toLowerCase()
+		if (text.startsWith(this.name.toLowerCase())) return this.name
+		return this.aliases.find(alias => text.startsWith(alias.toLowerCase()))
 	}
 
 	async executeTextCommand(message: Message) {
@@ -64,11 +76,11 @@ export class Command {
 		if (this.channel == 'guild' && message.channel.type == 'DM') return
 		if (this.permission == 'owner' && message.author.id !== process.env.OWNER) return
 		if (this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
-		message.reply("command returned: " + await this.execute([]))
+		message.reply(await this.execute(new TextArgs(message.content, this.args, this.subCommands)))
 	}
 
 	async executeSlashCommand(interaction: CommandInteraction) {
-		interaction.reply(await this.execute([]))
+		interaction.reply(await this.execute(new SlashArgs(interaction)))
 	}
 
 }
@@ -80,38 +92,3 @@ export type Category = {
 	commands: string[]
 }
 export type CategoryOptions = Omit<Category, 'commands'>
-
-
-// type Arg<T> = {
-// 	name: string
-// 	description: string
-// 	default?: T
-// 	type: 'string'
-// }
-// export type StringArg = Arg<string> & {
-// 	choices?: string[]
-// }
-// export type Argument = StringArg
-
-// export class Args {
-// 	args: string[]
-// 	options: Argument[]
-
-// 	constructor(text: string, options: Argument[]) {
-// 		this.args = text.match(/(".*?"|[^"\s]+)+(?=\s*|\s*$)/g) ?? []
-// 		this.options = options
-// 	}
-
-// 	getString(name: string) {
-// 		let i = 0
-// 		for (const option of this.options) {
-// 			if (option.name === name) {
-// 				if (option.type !== 'string') throw `argument "${name}" is not a string`
-// 				if (i >= this.args.length) return option.default ?? ''
-// 				else return this.args[i]
-// 			}
-// 			i++
-// 		}
-// 		throw `no such argument "${name}"`
-// 	}
-// }

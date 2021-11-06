@@ -26,17 +26,16 @@ export class BotClient extends Client {
 			if(!this.user || message.author.id === this.user.id) return
 			// TODO: check disabled channel
 		
-			let args: string[]
 			if(message.content.startsWith(global.config.prefix)) {
-				args = message.content.slice(global.config.prefix.length).trim().split(/\s+/)
+				message.content = message.content.slice(global.config.prefix.length).trim()
 			} else if(message.content.startsWith('<@!'+this.user.id+'>')) {
-				args = message.content.slice(this.user.id.length+4).trim().split(/\s+/)
+				message.content = message.content.slice(this.user.id.length+4).trim()
 			} else return
 
-			const lookup = args.shift()
-			if (!lookup) return
 			for (const [_, command] of this.commands) {
-				if (command.matchesKeyword(lookup)) {
+				const keyword = command.findKeyword(message.content)
+				if (command.type !== 'slash' && keyword) {
+					message.content = message.content.slice(keyword.length).trim()
 					return await command.executeTextCommand(message)
 				}
 			}
@@ -45,7 +44,12 @@ export class BotClient extends Client {
 		this.on('interactionCreate', async (interaction: Interaction) => {
 			if (!interaction.isCommand()) return
 			const command = this.commands.get(interaction.commandName)
-			if (command) await command.executeSlashCommand(interaction)
+			console.log(`executing slash command: ${command?.name}`)
+			if (command && command.type !== 'text') {
+				await command.executeSlashCommand(interaction)
+			} else {
+				interaction.reply(`Oops! It looks like that command doesn't exist anymore! Please contact <@!${process.env.OWNER}>`)
+			}
 		})
 	}
 }

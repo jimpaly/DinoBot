@@ -1,11 +1,11 @@
-import { Command } from '../../bot-framework'
+import { Args, Command } from '../../bot-framework'
 
 module.exports = new Command({
     name: 'convert',
     description: 'convert json files to mongodb',
     permission: 'owner',
     disabled: false,
-    async execute() {
+    async execute(args: Args) {
         return 'command is disabled';
         // const stats = (await Obj.readJSON('../data/levels.json')).stats
         // const oldTypes = ['points', 'messages', 'voice', 'streak', 'rep', 'invite', 'bumps', 'counting']

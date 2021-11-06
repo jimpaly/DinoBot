@@ -20,7 +20,7 @@ dotenv.config();
 	for (const file of await globPromise(`${__dirname}/modules/**/index.js`)) {
 		const module = (await require(file)) as Module
 		for (const command of await module.loadCommands()) {
-			if (command.disabled) continue
+			if (command.disabled || command.type == 'text') continue
 			commands.push(command.getSlashCommand())
 		}
 	}
