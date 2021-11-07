@@ -2,7 +2,7 @@ import * as fs from 'fs'
 
 
 
-interface Config {
+export interface Config {
 	prefix: string
 	status: {
 			mode: string

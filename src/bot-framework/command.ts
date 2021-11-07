@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders"
 import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
 import { CommandInteraction, Message } from "discord.js"
-import { ArgOption, ArgOptionOptions, Args, SlashArgs, SubCommand, TextArgs } from "."
+import { Arg, ArgOptions, Args, SlashArgs, SubCommand, SubCommandOptions, TextArgs } from "."
 
 
 export type CommandUserPermission = 'public' | 'admin' | 'owner'
@@ -17,8 +17,8 @@ export interface CommandOptions {
 	permission?: CommandUserPermission
 	channel?: CommandChannelPermission
 	type?: CommandType
-	args?: ArgOptionOptions[]
-	subCommands?: SubCommand[]
+	args?: ArgOptions[]
+	subCommands?: SubCommandOptions[]
 	execute: (args: Args) => Promise<string>
 }
 
@@ -31,7 +31,7 @@ export class Command {
 	permission: CommandUserPermission
 	channel: CommandChannelPermission
 	type: CommandType
-	args: ArgOption[]
+	args: Arg[]
 	subCommands: SubCommand[]
 
 	execute: (args: Args) => Promise<string>
@@ -45,8 +45,8 @@ export class Command {
 		this.permission = options.permission ?? 'public'
 		this.channel = options.channel ?? 'all'
 		this.type = options.type ?? 'text'
-		this.args = options.args?.map(arg => new ArgOption(arg)) ?? []
-		this.subCommands = options.subCommands ?? []
+		this.args = options.args?.map(arg => new Arg(arg)) ?? []
+		this.subCommands = options.subCommands?.map(sub => new SubCommand(sub)) ?? []
 		this.execute = options.execute
 	}
 
@@ -54,13 +54,8 @@ export class Command {
 		const command = new SlashCommandBuilder()
 			.setName(this.name)
 			.setDescription(this.description)
-		for (const arg of this.args) {
-			if (arg.type === 'string') 				command.addStringOption(option => arg.setSlashOption(option))
-			else if (arg.type === 'number') 	command.addNumberOption(option => arg.setSlashOption(option))
-			else if (arg.type === 'user') 			command.addUserOption(option => arg.setSlashOption(option))
-			else if (arg.type === 'member') 		command.addUserOption(option => arg.setSlashOption(option))
-			else if (arg.type === 'channel') command.addChannelOption(option => arg.setSlashOption(option))
-		}
+		if (this.subCommands.length == 0) for (const arg of this.args) arg.addToCommand(command)
+		else for (const subCommand of this.subCommands) subCommand.addToCommand(command)
 		return command.toJSON()
 	}
 

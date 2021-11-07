@@ -22,7 +22,7 @@ import * as config from './config'
 	process.stdout.write(`${new Date().toLocaleString('en-US')}`)
 
 	// Create Discord client
-	const client = new BotClient({ 
+	global.client = new BotClient({ 
 		intents: [
 			Intents.FLAGS.GUILDS,
 			Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.DIRECT_MESSAGES,
@@ -33,7 +33,7 @@ import * as config from './config'
 		partials: ['MESSAGE', 'GUILD_MEMBER'],
 	});
 
-	client.loadCommands(/*[
+	global.client.loadCommands(/*[
 		{
 			name: 'Dev',
 			description: 'Development commands'
@@ -42,11 +42,12 @@ import * as config from './config'
 
 	readLine.cursorTo(process.stdout, 30)
 	process.stdout.write(`Logging into Discord`)
-	client.login(process.env.BOT_TOKEN)
+	global.client.login(process.env.BOT_TOKEN)
 
 	// When the bot starts...
-	client.once('ready', () => {
+	global.client.once('ready', async () => {
+		global.guild = await global.client.guilds.fetch(process.env.GUILD as string)
 		readLine.cursorTo(process.stdout, 30)
-		process.stdout.write(`Logged in as @${client.user?.tag}\n`)
+		process.stdout.write(`Logged in as @${global.client.user?.tag}\n`)
 	});
 }())

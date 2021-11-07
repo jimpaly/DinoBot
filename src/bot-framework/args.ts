@@ -1,73 +1,18 @@
-import { SlashCommandBuilder, SlashCommandChannelOption, SlashCommandNumberOption, SlashCommandStringOption, SlashCommandUserOption } from "@discordjs/builders"
-import { CommandInteraction, GuildChannel, GuildMember, User } from "discord.js"
+import { CommandInteraction, GuildChannel, GuildMember, ThreadChannel, User } from "discord.js"
+import { Arg, SubCommand } from "."
 
-export type ArgOptionTypes = 'string' | 'number' | 'user' | 'member' | 'channel'
-export type SlashCommandOption = SlashCommandStringOption | SlashCommandNumberOption | SlashCommandUserOption | SlashCommandChannelOption
 
-export interface SubCommand {
-	name: string
-	description: string
-	aliases?: string[]
-	args?: ArgOption[]
-}
-export interface ArgChoice<T> {
-	name: string
-	value: T
-}
-export interface ArgOptionOptions {
-	name: string
-	description: string
-	type: ArgOptionTypes
-	optional?: boolean
-	choices?: ArgChoice<string>[] | ArgChoice<number>[]
-}
-export class ArgOption {
-	name: string
-	description: string
-	type: ArgOptionTypes
-	optional: boolean
-	choices: ArgChoice<string>[] | ArgChoice<number>[]
-
-	constructor(options: ArgOptionOptions) {
-		this.name = options.name
-		this.description = options.description
-		this.type = options.type
-		this.optional = options.optional ?? false
-		this.choices = options.choices ?? []
-	}
-
-	setSlashOption<T extends SlashCommandOption>(option: T): T {
-		option
-			.setName(this.name.toLowerCase())
-			.setDescription(this.description)
-			.setRequired(!this.optional)
-		if (option instanceof SlashCommandStringOption)
-			this.choices?.forEach(({name, value}) => option.addChoice(name, value as string))
-		if (option instanceof SlashCommandNumberOption)
-		this.choices?.forEach(({name, value}) => option.addChoice(name, value as number))
-		return option
-	}
-}
-
-function isSubCommand(arg: string, subcommand: SubCommand) {
-	return subcommand.name.toLowerCase() === arg.toLowerCase() 
-	|| subcommand.aliases?.some(alias => alias.toLowerCase() === arg.toLowerCase())
-}
 
 export interface Args {
-	options: ArgOption[]
-	subCommand: SubCommand
 	getSubCommand(): string | null
 	getString(name: string): string | null
 	getNumber(name: string): number | null
-	getUser(name: string): User | null
-	getMember(name: string): GuildMember | null
-	getChannel(name: string): GuildChannel | null
+	getUser(name: string): Promise<User | null>
+	getMember(name: string): Promise<GuildMember | null>
+	getChannel(name: string): Promise<GuildChannel | null>
 }
 
 export class SlashArgs implements Args {
-	options: ArgOption[]
-	subCommand: SubCommand
 	interaction: CommandInteraction
 
 	constructor(interaction: CommandInteraction) {
@@ -77,12 +22,12 @@ export class SlashArgs implements Args {
 	getSubCommand = () => this.interaction.options.getSubcommand()
 	getString = (name: string) => this.interaction.options.getString(name.toLowerCase())
 	getNumber = (name: string) => this.interaction.options.getNumber(name.toLowerCase())
-	getUser = (name: string) => this.interaction.options.getUser(name.toLowerCase())
-	getMember = (name: string) => {
+	getUser = async (name: string) => this.interaction.options.getUser(name.toLowerCase())
+	getMember = async (name: string) => {
 		const member = this.interaction.options.getMember(name.toLowerCase())
 		return (member instanceof GuildMember) ? member : null
 	}
-	getChannel = (name: string) => {
+	getChannel = async (name: string) => {
 		const channel = this.interaction.options.getChannel(name.toLowerCase())
 		return (channel instanceof GuildChannel) ? channel : null
 	}
@@ -90,39 +35,70 @@ export class SlashArgs implements Args {
 }
 
 export class TextArgs implements Args {
-	options: ArgOption[]
-	subCommand: SubCommand
+	subCommand?: string
+	options: Arg[]
 	args: string[]
-	subArgs: string[]
 
-	constructor(text: string, options: ArgOption[], subCommands: SubCommand[]) {
+	constructor(text: string, options: Arg[], subCommands: SubCommand[]) {
 		this.options = options
 		this.args = [...text.matchAll(/[^\s"]+|"([^"]*)"/gi)]
 			.map(matches => matches[1] ?? matches[0])
-		for (let i = 0; i < this.args.length; i++) {
-			const subCommand = subCommands.find(subCommand => isSubCommand(this.args[i], subCommand))
-			if (!subCommand) continue
-			this.subCommand = subCommand
-			this.subArgs = this.args.splice(i).slice(1)
-			break
+		const subCommand = subCommands.find(c => c.findKeyword(this.args[0]))
+		if (subCommand) {
+			this.subCommand = subCommand.name
+			this.options = subCommand.args
+			this.args = this.args.slice(1)
 		}
 	}
 
-	getSubCommand = () => this.subCommand.name
+	getSubCommand = () => this.subCommand ?? null
 
-	getString(name: string): string | null {
-		throw new Error("Method not implemented.")
+	getString(name: string) {
+		const { option, arg } = this.getArg(name)
+		if (!option || !arg || option.type !== 'string') return null
+		return arg
 	}
-	getNumber(name: string): number | null {
-		throw new Error("Method not implemented.")
+	getNumber(name: string) {
+		const { option, arg } = this.getArg(name)
+		if (!option || !arg || option.type !== 'number') return null
+		if (isNaN(Number(arg))) return null
+		return Number(arg)
 	}
-	getUser(name: string): User | null {
-		throw new Error("Method not implemented.")
+	async getUser(name: string) {
+		let { option, arg } = this.getArg(name)
+		if (!option || !arg || option.type !== 'user') return null
+		if (/^(<@!)?[0-9]+(>)?$/.test(arg)) arg = arg.slice(3, -1)
+		if (/^[0-9]+$/.test(arg)) return await global.client.users.fetch(arg)
+		return global.client.users.cache.find(({username}) => 
+			username.toLowerCase() === arg.toLowerCase()) 
+			?? global.client.users.cache.find(({username}) => 
+			username.toLowerCase().includes(arg.toLowerCase()))
+			?? null
 	}
-	getMember(name: string): GuildMember | null {
-		throw new Error("Method not implemented.")
+	async getMember(name: string) {
+		let { option, arg } = this.getArg(name)
+		if (!option || !arg || option.type !== 'member') return null
+		if (/^(<@!)?[0-9]+(>)?$/.test(arg)) arg = arg.slice(3, -1)
+		if (/^[0-9]+$/.test(arg)) return await global.guild.members.fetch(arg)
+		return (await global.guild.members.search({query: arg})).first() ?? null
 	}
-	getChannel(name: string): GuildChannel | null {
-		throw new Error("Method not implemented.")
+	async getChannel(name: string) {
+		let { option, arg } = this.getArg(name)
+		if (!option || !arg || option.type !== 'channel') return null
+		if (/^(<#)?[0-9]+(>)?$/.test(arg)) arg = arg.slice(2, -1)
+		if (/^[0-9]+$/.test(arg)) return await global.guild.channels.fetch(arg)
+		let channel = global.guild.channels.cache.find(({name}) => name.toLowerCase() === arg.toLowerCase())
+		if (channel && !channel.isThread()) return channel
+		channel = global.guild.channels.cache.find(({name}) => name.toLowerCase().includes(arg.toLowerCase()))
+		if (channel && !channel.isThread()) return channel
+		return null
+	}
+
+	getArg(name: string) {
+		const index = this.options.findIndex(option => option.name === name)
+		return {
+			option: this.options[index],
+			arg: this.args[index],
+		}
 	}
 }

@@ -12,7 +12,10 @@ export {
 } from './module'
 
 export {
-	ArgOptionTypes, ArgOptionOptions, ArgOption,
-	SubCommand,
+	ArgOptionTypes, ArgOptions, Arg,
+	SubCommand, SubCommandOptions,
+} from './arg'
+
+export {
 	Args, TextArgs, SlashArgs,
 } from './args'

@@ -44,7 +44,6 @@ export class BotClient extends Client {
 		this.on('interactionCreate', async (interaction: Interaction) => {
 			if (!interaction.isCommand()) return
 			const command = this.commands.get(interaction.commandName)
-			console.log(`executing slash command: ${command?.name}`)
 			if (command && command.type !== 'text') {
 				await command.executeSlashCommand(interaction)
 			} else {
