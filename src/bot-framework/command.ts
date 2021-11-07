@@ -19,9 +19,15 @@ export interface CommandOptions {
 	type?: CommandType
 	args?: ArgOptions[]
 	subCommands?: SubCommandOptions[]
+		
+	/** the main logic for the command.  */
 	execute: (args: Args) => Promise<string>
 }
 
+/**
+ * commands are basically functions that are called by
+ * users sending messages with specific arguments
+ */
 export class Command {
 	name: string
 	description: string
@@ -50,6 +56,10 @@ export class Command {
 		this.execute = options.execute
 	}
 
+	/**
+	 * converts this command into a slash command
+	 * @returns a slash command
+	 */
 	getSlashCommand(): RESTPostAPIApplicationCommandsJSONBody {
 		const command = new SlashCommandBuilder()
 			.setName(this.name)
@@ -60,12 +70,21 @@ export class Command {
 		return command.toJSON()
 	}
 
+	/**
+	 * tells whether a given text is using this command
+	 * @param text the text that is trying to run a command
+	 * @returns this command's name, or null the text doesn't match
+	 */
 	findKeyword(text: string) {
 		text = text.toLowerCase()
 		if (text.startsWith(this.name.toLowerCase())) return this.name
-		return this.aliases.find(alias => text.startsWith(alias.toLowerCase()))
+		return this.aliases.find(alias => text.startsWith(alias.toLowerCase())) ?? null
 	}
 
+	/**
+	 * executes the command from a text message
+	 * @param message the message that is calling this command
+	 */
 	async executeTextCommand(message: Message) {
 		if (this.disabled) return
 		if (this.guildOnly && message.channel.type === 'DM') return
@@ -74,8 +93,12 @@ export class Command {
 		message.reply(await this.execute(new TextArgs(message.content, this.args, this.subCommands)))
 	}
 
+	/**
+	 * executes the command from a discord slash command interaction
+	 * @param interaction the interaction that is calling this command
+	 */
 	async executeSlashCommand(interaction: CommandInteraction) {
-		interaction.reply(await this.execute(new SlashArgs(interaction)))
+		await interaction.reply(await this.execute(new SlashArgs(interaction)))
 	}
 
 }

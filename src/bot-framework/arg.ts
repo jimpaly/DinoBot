@@ -10,6 +10,12 @@ export interface SubCommandOptions {
 	aliases?: string[]
 	args?: ArgOptions[]
 }
+
+/**
+ * Sub commands are keywords that come before every other arg.
+ * This makes it easy to split commands into many different 
+ * categories and change up the arg types in each category
+ */
 export class SubCommand {
 	name: string
 	description: string
@@ -23,6 +29,11 @@ export class SubCommand {
 		this.args = options.args?.map(arg => new Arg(arg)) ?? []
 	}
 
+	/**
+	 * tell whether the keyword matches with te current command
+	 * @param arg the keyword to search for
+	 * @returns the name of this command. if the keyword does not match, return null
+	 */
 	findKeyword(arg: string) {
 		arg = arg.toLowerCase()
 		if (this.name.toLowerCase() === arg) return this.name
@@ -30,6 +41,10 @@ export class SubCommand {
 		return null
 	}
 
+	/**
+	 * add this sub command to a slash command
+	 * @param command the command to add this sub command to
+	 */
 	addToCommand(command: SlashCommandBuilder) {
 		command.addSubcommand(subCommand => {
 			subCommand
@@ -53,6 +68,10 @@ export interface ArgOptions {
 	optional?: boolean
 	choices?: ArgChoice<string>[] | ArgChoice<number>[]
 }
+
+/**
+ * describes an argument of a command
+ */
 export class Arg {
 	name: string
 	description: string
@@ -68,6 +87,10 @@ export class Arg {
 		this.choices = options.choices ?? []
 	}
 
+	/**
+	 * add this argument to a slash command
+	 * @param command the command to add to
+	 */
 	addToCommand(command: SlashCommandBuilder | SlashCommandSubcommandBuilder) {
 		if (this.type === 'string') 			command.addStringOption(option => this.setSlashOption(option)
 			.addChoices(this.choices.map(({name, value}) => [name, value as string])))
@@ -78,7 +101,7 @@ export class Arg {
 		else if (this.type === 'channel')command.addChannelOption(option => this.setSlashOption(option))
 	}
 
-	setSlashOption<T extends SlashCommandOption>(option: T): T {
+	private setSlashOption<T extends SlashCommandOption>(option: T): T {
 		option
 			.setName(this.name.toLowerCase())
 			.setDescription(this.description)

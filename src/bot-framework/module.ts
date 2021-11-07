@@ -6,6 +6,10 @@ export interface ModuleOptions {
 	category: string
 }
 
+/**
+ * class defining a bot module. modules can contain 
+ * commands, chat monitors, buttons, and other discord interaction stuff
+ */
 export class Module {
 
 	directory: string
@@ -18,6 +22,10 @@ export class Module {
 		this.category = options.category
 	}
 
+	/**
+	 * loads all commands in this module
+	 * @returns a list of commands
+	 */
 	async loadCommands(): Promise<Command[]> {
 		const commands: Command[] = []
 		for (const file of this.commands) {

@@ -7,11 +7,12 @@ const globPromise = promisify(glob)
 
 export class BotClient extends Client {
 	commands: Collection<string, Command> = new Collection()
-	// categories: Category[] = []
 
-	async loadCommands(/* TODO options: CategoryOptions[]*/) {
+	/**
+	 * loads all commands from files to this bot client
+	 */
+	async loadCommands() {
 		this.commands = new Collection()
-		// this.categories = []
 
 		for (const file of await globPromise(`${__dirname}/../modules/**/index.js`)) {
 			const module = (await require(file)) as Module
@@ -26,12 +27,14 @@ export class BotClient extends Client {
 			if(!this.user || message.author.id === this.user.id) return
 			// TODO: check disabled channel
 		
+			// a text is a command if it starts with the required prefix
 			if(message.content.startsWith(global.config.prefix)) {
 				message.content = message.content.slice(global.config.prefix.length).trim()
 			} else if(message.content.startsWith('<@!'+this.user.id+'>')) {
 				message.content = message.content.slice(this.user.id.length+4).trim()
 			} else return
 
+			// find the command, then execute it
 			for (const [_, command] of this.commands) {
 				const keyword = command.findKeyword(message.content)
 				if (command.type !== 'slash' && keyword) {
@@ -43,6 +46,7 @@ export class BotClient extends Client {
 
 		this.on('interactionCreate', async (interaction: Interaction) => {
 			if (!interaction.isCommand()) return
+			// TODO: check disabled channel?
 			const command = this.commands.get(interaction.commandName)
 			if (command && command.type !== 'text') {
 				await command.executeSlashCommand(interaction)

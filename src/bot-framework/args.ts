@@ -1,8 +1,9 @@
 import { CommandInteraction, GuildChannel, GuildMember, User } from "discord.js"
 import { Arg, SubCommand } from "."
 
-
-
+/** 
+ * abstract interface for getting args from a command call
+ */ 
 export interface Args {
 	getSubCommand(): string | null
 	getString(name: string): string | null
@@ -12,6 +13,9 @@ export interface Args {
 	getChannel(name: string): Promise<GuildChannel | null>
 }
 
+/**
+ * args interface for slash commands
+ */
 export class SlashArgs implements Args {
 	interaction: CommandInteraction
 
@@ -34,6 +38,9 @@ export class SlashArgs implements Args {
 	
 }
 
+/**
+ * args interface for text commands
+ */
 export class TextArgs implements Args {
 	subCommand?: string
 	options: Arg[]
@@ -94,6 +101,11 @@ export class TextArgs implements Args {
 		return null
 	}
 
+	/**
+	 * find the raw argument with a specific name
+	 * @param name the name of the arg
+	 * @returns the arg option and arg
+	 */
 	getArg(name: string) {
 		const index = this.options.findIndex(option => option.name === name)
 		return {
