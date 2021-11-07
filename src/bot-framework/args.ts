@@ -1,4 +1,4 @@
-import { CommandInteraction, GuildChannel, GuildMember, ThreadChannel, User } from "discord.js"
+import { CommandInteraction, GuildChannel, GuildMember, User } from "discord.js"
 import { Arg, SubCommand } from "."
 
 

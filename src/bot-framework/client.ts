@@ -1,7 +1,7 @@
 import glob from 'glob'
 import { promisify } from 'util'
 import { Client, Collection, Interaction, Message } from "discord.js"
-import { Module, Command, Category, CategoryOptions } from '.'
+import { Module, Command } from '.'
 
 const globPromise = promisify(glob)
 

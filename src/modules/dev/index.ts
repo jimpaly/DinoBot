@@ -5,6 +5,7 @@ export = new Module({
 	commands: [
 		'convert',
 		'test',
+		'admin',
 	],
 	category: 'dev',
 })

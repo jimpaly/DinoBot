@@ -5,7 +5,7 @@ import { Arg, ArgOptions, Args, SlashArgs, SubCommand, SubCommandOptions, TextAr
 
 
 export type CommandUserPermission = 'public' | 'admin' | 'owner'
-export type CommandChannelPermission = 'all' | 'dm' | 'guild'
+// export type CommandChannelPermission = 'all' | 'dm' | 'guild'
 export type CommandType = 'text' | 'slash' | 'both'
 
 export interface CommandOptions {
@@ -15,7 +15,7 @@ export interface CommandOptions {
 	aliases?: string[]
 	disabled?: boolean
 	permission?: CommandUserPermission
-	channel?: CommandChannelPermission
+	guildOnly?: boolean
 	type?: CommandType
 	args?: ArgOptions[]
 	subCommands?: SubCommandOptions[]
@@ -29,7 +29,7 @@ export class Command {
 	aliases: string[]
 	disabled: boolean
 	permission: CommandUserPermission
-	channel: CommandChannelPermission
+	guildOnly: boolean
 	type: CommandType
 	args: Arg[]
 	subCommands: SubCommand[]
@@ -43,7 +43,7 @@ export class Command {
 		this.aliases = options.aliases ?? []
 		this.disabled = options.disabled ?? false
 		this.permission = options.permission ?? 'public'
-		this.channel = options.channel ?? 'all'
+		this.guildOnly = options.guildOnly ?? false
 		this.type = options.type ?? 'text'
 		this.args = options.args?.map(arg => new Arg(arg)) ?? []
 		this.subCommands = options.subCommands?.map(sub => new SubCommand(sub)) ?? []
@@ -54,6 +54,7 @@ export class Command {
 		const command = new SlashCommandBuilder()
 			.setName(this.name)
 			.setDescription(this.description)
+			.setDefaultPermission(this.permission === 'public')
 		if (this.subCommands.length == 0) for (const arg of this.args) arg.addToCommand(command)
 		else for (const subCommand of this.subCommands) subCommand.addToCommand(command)
 		return command.toJSON()
@@ -67,8 +68,7 @@ export class Command {
 
 	async executeTextCommand(message: Message) {
 		if (this.disabled) return
-		if (this.channel == 'dm' && message.channel.type != 'DM') return
-		if (this.channel == 'guild' && message.channel.type == 'DM') return
+		if (this.guildOnly && message.channel.type === 'DM') return
 		if (this.permission == 'owner' && message.author.id !== process.env.OWNER) return
 		if (this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
 		message.reply(await this.execute(new TextArgs(message.content, this.args, this.subCommands)))

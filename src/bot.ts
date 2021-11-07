@@ -33,12 +33,7 @@ import * as config from './config'
 		partials: ['MESSAGE', 'GUILD_MEMBER'],
 	});
 
-	global.client.loadCommands(/*[
-		{
-			name: 'Dev',
-			description: 'Development commands'
-		}
-	]*/)
+	await global.client.loadCommands()
 
 	readLine.cursorTo(process.stdout, 30)
 	process.stdout.write(`Logging into Discord`)
