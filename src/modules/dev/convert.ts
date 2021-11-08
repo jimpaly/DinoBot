@@ -5,7 +5,7 @@ module.exports = new Command({
     description: 'convert json files to mongodb',
     permission: 'owner',
     disabled: true,
-    async execute(args: Args) {
+    async execute() {
         return 'command is disabled';
         // const stats = (await Obj.readJSON('../data/levels.json')).stats
         // const oldTypes = ['points', 'messages', 'voice', 'streak', 'rep', 'invite', 'bumps', 'counting']

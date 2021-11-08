@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import { createRxDatabase, getRxStoragePouch, RxCollection, RxDatabase, RxDocument, RxJsonSchema } from 'rxdb';
 
 
 
@@ -10,8 +11,51 @@ export interface Config {
 	}
 }
 
+type ConfigDocType = {
+	prefix: string
+	status: {
+		mode: string
+		message: string
+	}
+}
+type ConfigDocument = RxDocument<ConfigDocType, {}>
+type ConfigCollection = RxCollection<ConfigDocType, {}, {}>
+
+type DatabaseCollections = {
+	config: ConfigCollection
+}
+export type Database = RxDatabase<DatabaseCollections>
+
+
+
 export async function load() {
-	global.config = await readJSON('config.json') as Config
+	// global.config = await readJSON('config.json') as Config
+	global.database = await createRxDatabase<DatabaseCollections>({
+		name: 'bot-db',
+		storage: getRxStoragePouch('websql')
+	})
+	const configSchema: RxJsonSchema<ConfigDocType> = {
+		title: 'config',
+		description: 'bot configuration',
+		version: 0,
+		keyCompression: true,
+		primaryKey: 'prefix',
+		type: 'object',
+		properties: {
+			prefix: { type: 'string' },
+			status: { type: 'object', properties: {
+				mode: { type: 'string' },
+				message: { type: 'string' },
+			} },
+		},
+		required: ['prefix', 'status'],
+	}
+	await global.database.addCollections({
+		config: {
+			schema: configSchema,
+		}
+	})
+	console.log(global.database.config.findOne())
 }
 
 /** Reads in an object from a JSON file, relative to `configuration/` */

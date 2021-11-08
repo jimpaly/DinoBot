@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders"
 import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
-import { CommandInteraction, Message } from "discord.js"
+import { CommandInteraction, GuildMember, Message, Permissions, User } from "discord.js"
 import { Arg, ArgOptions, Args, SlashArgs, SubCommand, SubCommandOptions, TextArgs } from "."
 
 
@@ -8,6 +8,11 @@ export type CommandUserPermission = 'public' | 'admin' | 'owner'
 // export type CommandChannelPermission = 'all' | 'dm' | 'guild'
 export type CommandType = 'text' | 'slash' | 'both'
 
+export interface CommandExecuteData {
+	user: User
+	member?: GuildMember
+	permissions?: Permissions
+}
 export interface CommandOptions {
 	name: string
 	description: string
@@ -21,7 +26,7 @@ export interface CommandOptions {
 	subCommands?: SubCommandOptions[]
 		
 	/** the main logic for the command.  */
-	execute: (args: Args) => Promise<string>
+	execute: (args: Args, data: CommandExecuteData) => Promise<string>
 }
 
 /**
@@ -40,7 +45,7 @@ export class Command {
 	args: Arg[]
 	subCommands: SubCommand[]
 
-	execute: (args: Args) => Promise<string>
+	execute: (args: Args, data: CommandExecuteData) => Promise<string>
 
 	constructor(options: CommandOptions) {
 		this.name = options.name
@@ -89,8 +94,12 @@ export class Command {
 		if (this.disabled) return
 		if (this.guildOnly && message.channel.type === 'DM') return
 		if (this.permission == 'owner' && message.author.id !== process.env.OWNER) return
-		if (this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
-		message.reply(await this.execute(new TextArgs(message.content, this.args, this.subCommands)))
+		if (this.guildOnly && this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
+		message.reply(await this.execute(new TextArgs(message.content, this.args, this.subCommands), {
+			user: message.author,
+			member: message.member ?? undefined,
+			permissions: message.member?.permissions
+		}))
 	}
 
 	/**
@@ -98,7 +107,11 @@ export class Command {
 	 * @param interaction the interaction that is calling this command
 	 */
 	async executeSlashCommand(interaction: CommandInteraction) {
-		await interaction.reply(await this.execute(new SlashArgs(interaction)))
+		await interaction.reply(await this.execute(new SlashArgs(interaction), {
+			user: interaction.user,
+			member: (interaction.member instanceof GuildMember) ? interaction.member : undefined,
+			permissions: (interaction.member instanceof GuildMember) ? interaction.member.permissions : undefined
+		}))
 	}
 
 }

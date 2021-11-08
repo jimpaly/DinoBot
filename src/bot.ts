@@ -11,18 +11,25 @@ import * as readLine from 'readline'
 import { Intents } from 'discord.js'
 import { BotClient } from './bot-framework'
 import * as dotenv from 'dotenv'
-import * as config from './config'
+import * as database from './database'
 
+export function print(x: number, message: string) {
+	readLine.cursorTo(process.stdout, x)
+	process.stdout.write(message)
+}
 
 (async function() {
 
-	dotenv.config();
-	await config.load();
+	print(0, `${new Date().toLocaleString('en-US')}`)
 
-	process.stdout.write(`${new Date().toLocaleString('en-US')}`)
+	dotenv.config();
+
+	await database.load()
+	await database.config()
+	print(30, `Loaded database ./db/${process.env.DATABASE}`)
 
 	// Create Discord client
-	global.client = new BotClient({ 
+	global.client = new BotClient({
 		intents: [
 			Intents.FLAGS.GUILDS,
 			Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.DIRECT_MESSAGES,
@@ -30,19 +37,18 @@ import * as config from './config'
 			Intents.FLAGS.GUILD_VOICE_STATES,
 			Intents.FLAGS.GUILD_MEMBERS,
 		],
-		partials: ['MESSAGE', 'GUILD_MEMBER'],
+		partials: ['MESSAGE', 'GUILD_MEMBER', 'CHANNEL'],
 	});
 
 	await global.client.loadCommands()
 
-	readLine.cursorTo(process.stdout, 30)
-	process.stdout.write(`Logging into Discord`)
+	print(70, `Logging into Discord`)
 	global.client.login(process.env.BOT_TOKEN)
 
 	// When the bot starts...
 	global.client.once('ready', async () => {
 		global.guild = await global.client.guilds.fetch(process.env.GUILD as string)
-		readLine.cursorTo(process.stdout, 30)
-		process.stdout.write(`Logged in as @${global.client.user?.tag}\n`)
+		print(70, `Logged in as @${global.client.user?.tag}\n`)
 	});
+
 }())

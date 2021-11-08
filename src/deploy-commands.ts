@@ -40,7 +40,8 @@ interface Permission {
 		.map(command => command.getSlashCommand())
 	await new REST({ version: '9' }).setToken(process.env.BOT_TOKEN)
 		.put(Routes.applicationGuildCommands(global.client.user.id, process.env.GUILD), { body: commands })
-	console.log(`Successfully registered ${commands.length} slash commands.`)
+	console.log(`Successfully registered ${commands.length} slash commands:`)
+	console.log(commands.map(command => command.name).join(', '))
 
 	// set permissions for admin and owner only commands
 	const adminPermissions: Permission[] = global.guild.roles.cache
@@ -63,5 +64,7 @@ interface Permission {
 	await global.guild.commands.permissions.set({ fullPermissions })
 	console.log(`Updated permissions of ${fullPermissions.length} commands (${numAdmin} admin; ${numOwner} owner)`)
 	//TODO: make a command to refresh permissions after new roles are created
+
+	process.exit()
 
 })()

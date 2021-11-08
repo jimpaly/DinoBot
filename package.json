@@ -7,7 +7,7 @@
     "test": "node output/deploy-commands; node output/bot",
     "start": "node output/bot",
     "deploy": "node output/deploy-commands",
-    "init": "mv configuration_templates configuration; mv private-template.json private.json; vim private.json",
+    "init": "mkdir db; mv .env-template .env; vim .env",
     "build": "tsc",
     "watch": "tsc -w",
     "zip": "zip DinoBot.zip -r output configuration_templates private-template.json package.json package-lock.json -x **/.DS_Store",
@@ -26,8 +26,6 @@
   "dependencies": {
     "@discordjs/builders": "^0.8.2",
     "@discordjs/rest": "^0.1.0-canary.0",
-    "@sapphire/decorators": "^3.1.3",
-    "@sapphire/framework": "^2.1.3",
     "@types/node": "^16.11.6",
     "canvas": "^2.8.0",
     "common-tags": "^1.8.0",
@@ -37,6 +35,9 @@
     "glob": "^7.2.0",
     "mongodb": "^3.6.5",
     "mongoose": "^5.12.2",
+    "pouchdb-adapter-node-websql": "^7.0.0",
+    "rxdb": "^10.3.5",
+    "rxjs": "^7.4.0",
     "ytdl-core": "^4.5.0"
   },
   "devDependencies": {

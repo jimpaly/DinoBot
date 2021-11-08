@@ -26,7 +26,7 @@ export class BotClient extends Client {
 			//if(message.author.bot) return
 			if(!this.user || message.author.id === this.user.id) return
 			// TODO: check disabled channel
-		
+
 			// a text is a command if it starts with the required prefix
 			if(message.content.startsWith(global.config.prefix)) {
 				message.content = message.content.slice(global.config.prefix.length).trim()
