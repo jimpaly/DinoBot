@@ -17,7 +17,7 @@ export class BotClient extends Client {
 
 		for (const file of await globPromise(`${__dirname}/../modules/**/index.js`)) {
 			const module = (await require(file)) as Module
-			for (const command of await module.loadCommands()) {
+			for (const command of await module.getCommands()) {
 				this.commands.set(command.name, command)
 				// TODO: add to categories
 			}

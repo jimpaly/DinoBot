@@ -1,8 +1,8 @@
-import { Module } from "../../bot-framework";
+import { createModule } from "../../bot-framework";
 
-module.exports = new Module({
+module.exports = createModule({
 	directory: 'utility',
-	category: 'utility',
+	name: 'Utility',
 	commands: [
 		'prefix'
 	]

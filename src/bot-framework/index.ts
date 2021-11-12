@@ -3,7 +3,7 @@ export {
 } from './client'
 
 export {
-	Module
+	Module, createModule,
 } from './module'
 
 export {

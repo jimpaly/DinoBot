@@ -1,9 +1,9 @@
 import { Command } from "."
 
-export interface ModuleOptions {
+interface ModuleCreator {
 	directory: string
+	name: string
 	commands: string[]
-	category: string
 }
 
 /**
@@ -12,21 +12,17 @@ export interface ModuleOptions {
  */
 export class Module {
 
-	directory: string
-	commands: string[]
-	category: string
-
-	constructor(options: ModuleOptions) {
-		this.directory = options.directory
-		this.commands = options.commands
-		this.category = options.category
-	}
+	constructor(
+		readonly name: string,
+		readonly directory: string,
+		readonly commands: string[],
+	) { }
 
 	/**
 	 * loads all commands in this module
 	 * @returns a list of commands
 	 */
-	async loadCommands(): Promise<Command<any>[]> {
+	async getCommands(): Promise<Command<any>[]> {
 		const commands: Command<any>[] = []
 		for (const file of this.commands) {
 			commands.push((await require(`../modules/${this.directory}/${file}.js`)) as Command<any>)
@@ -35,3 +31,9 @@ export class Module {
 	}
 
 }
+
+export function createModule({
+	name, directory, commands,
+}: ModuleCreator): Module { return new Module(
+	name, directory, commands,
+)}
