@@ -6,7 +6,6 @@ import { DeepReadonly, DeepReadonlyObject } from 'rxdb/dist/types/types';
 
 addPouchPlugin(require('pouchdb-adapter-node-websql'));
 
-
 type DatabaseCollections = {}
 export type Database = RxDatabase<DatabaseCollections>
 

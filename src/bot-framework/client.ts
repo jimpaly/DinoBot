@@ -2,11 +2,12 @@ import glob from 'glob'
 import { promisify } from 'util'
 import { Client, Collection, Interaction, Message } from "discord.js"
 import { Module, Command } from '.'
+import { matchKeyword } from './command'
 
 const globPromise = promisify(glob)
 
 export class BotClient extends Client {
-	commands: Collection<string, Command> = new Collection()
+	commands: Collection<string, Command<any>> = new Collection()
 
 	/**
 	 * loads all commands from files to this bot client
@@ -22,10 +23,10 @@ export class BotClient extends Client {
 			}
 		}
 
-		this.on('messageCreate', async (message: Message) => {
-			//if(message.author.bot) return
-			if(!this.user || message.author.id === this.user.id) return
-			// TODO: check disabled channel
+		this.on('messageCreate', async (message: Message): Promise<any> => {
+				//if(message.author.bot) return
+				if(!this.user || message.author.id === this.user.id) return
+				// TODO: check disabled channel
 
 			// a text is a command if it starts with the required prefix
 			if(message.content.startsWith(global.config.prefix)) {
@@ -34,14 +35,14 @@ export class BotClient extends Client {
 				message.content = message.content.slice(this.user.id.length+4).trim()
 			} else return
 
-			// find the command, then execute it
-			for (const [_, command] of this.commands) {
-				const keyword = command.findKeyword(message.content)
-				if (command.type !== 'slash' && keyword) {
-					message.content = message.content.slice(keyword.length).trim()
-					return await command.executeTextCommand(message)
+				// find the command, then execute it
+				for (const [_, command] of this.commands) {
+					const keyword = matchKeyword(command, message.content)
+					if (command.type !== 'slash' && keyword) {
+						message.content = message.content.slice(keyword.length).trim()
+						return await command.executeTextCommand(message)
+					}
 				}
-			}
 		})
 
 		this.on('interactionCreate', async (interaction: Interaction) => {

@@ -1,10 +1,11 @@
-import { Args, Command } from '../../bot-framework'
+import { createCommand } from '../../bot-framework'
 
-module.exports = new Command({
+module.exports = createCommand<{}>({
     name: 'convert',
     description: 'convert json files to mongodb',
     permission: 'owner',
     disabled: true,
+    args: {},
     async execute() {
         return 'command is disabled';
         // const stats = (await Obj.readJSON('../data/levels.json')).stats

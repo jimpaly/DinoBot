@@ -26,10 +26,10 @@ export class Module {
 	 * loads all commands in this module
 	 * @returns a list of commands
 	 */
-	async loadCommands(): Promise<Command[]> {
-		const commands: Command[] = []
+	async loadCommands(): Promise<Command<any>[]> {
+		const commands: Command<any>[] = []
 		for (const file of this.commands) {
-			commands.push((await require(`../modules/${this.directory}/${file}.js`)) as Command)
+			commands.push((await require(`../modules/${this.directory}/${file}.js`)) as Command<any>)
 		}
 		return commands
 	}

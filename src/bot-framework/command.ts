@@ -1,65 +1,95 @@
-import { SlashCommandBuilder } from "@discordjs/builders"
+import { SlashCommandBuilder, SlashCommandChannelOption, SlashCommandNumberOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, SlashCommandUserOption } from "@discordjs/builders"
 import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
-import { CommandInteraction, GuildMember, Message, Permissions, User } from "discord.js"
-import { Arg, ArgOptions, Args, SlashArgs, SubCommand, SubCommandOptions, TextArgs } from "."
+import { Awaitable, Channel, CommandInteraction, GuildChannel, GuildMember, Message, Permissions, User } from "discord.js"
 
+type ArgTypeStr = 'string' | 'number' | 'user' | 'member' | 'channel'
+type ArgType = string | number | User | GuildMember | Channel
+type ArgTypeFromStr<Type extends ArgTypeStr> = Type extends 'string' ? string : Type extends 'number' ? number :
+	Type extends 'user' ? User : Type extends 'member' ? GuildMember : Type extends 'channel' ? Channel : ArgType
+type ArgTypeToStr<Type extends ArgType> = Type extends string ? 'string' : Type extends number ? 'number' :
+	Type extends User ? 'user' : Type extends GuildMember ? 'member' : Type extends Channel ? 'channel' : ArgTypeStr
 
-export type CommandUserPermission = 'public' | 'admin' | 'owner'
+export type ArgTypesTemplate = {[key: string]: ArgType}
+
+export type CommandPermission = 'public' | 'admin' | 'owner'
 // export type CommandChannelPermission = 'all' | 'dm' | 'guild'
 export type CommandType = 'text' | 'slash' | 'both'
 
-export interface CommandExecuteData {
+// TODO: add choices?
+export interface Arg<Type extends ArgType> {
+	description: string
+	type: ArgTypeToStr<Exclude<Type, undefined>>
+	optional: undefined extends Type ? true : false
+}
+
+export interface CommandBlueprint<ArgTypes extends ArgTypesTemplate> {
+	name: string
+	description: string
+	disabled?: boolean
+	aliases?: string[]
+	args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>}
+	execute: (args: ArgTypes, data: CommandExecuteData) => Awaitable<string>
+}
+
+interface CommandExecuteData {
 	user: User
 	member?: GuildMember
 	permissions?: Permissions
 }
-export interface CommandOptions {
-	name: string
-	description: string
+interface CommandCreator<ArgTypes extends ArgTypesTemplate> extends CommandBlueprint<ArgTypes> {
 	details?: string
-	aliases?: string[]
-	disabled?: boolean
-	permission?: CommandUserPermission
+	permission?: CommandPermission
 	guildOnly?: boolean
 	type?: CommandType
-	args?: ArgOptions[]
-	subCommands?: SubCommandOptions[]
-		
-	/** the main logic for the command.  */
-	execute: (args: Args, data: CommandExecuteData) => Promise<string>
+}
+interface SubcommandCreator<ArgTypes extends ArgTypesTemplate> extends CommandBlueprint<ArgTypes> {
+	permission?: CommandPermission
+	guildOnly?: boolean
+	type?: CommandType
+}
+
+interface Subcommand<ArgTypes extends ArgTypesTemplate> {
+	name: string
+	description: string
+	aliases: string[]
+	disabled: boolean
+	permission: CommandPermission
+	guildOnly: boolean
+	type: CommandType
+	args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>}
+	execute: (args: ArgTypes, data: CommandExecuteData) => Awaitable<string>
 }
 
 /**
  * commands are basically functions that are called by
  * users sending messages with specific arguments
  */
-export class Command {
-	name: string
-	description: string
-	details: string
-	aliases: string[]
-	disabled: boolean
-	permission: CommandUserPermission
-	guildOnly: boolean
-	type: CommandType
-	args: Arg[]
-	subCommands: SubCommand[]
+export class Command<ArgTypes extends ArgTypesTemplate> {
 
-	execute: (args: Args, data: CommandExecuteData) => Promise<string>
+	readonly subcommands: Subcommand<any>[]
 
-	constructor(options: CommandOptions) {
-		this.name = options.name
-		this.description = options.description
-		this.details = options.details ?? ''
-		this.aliases = options.aliases ?? []
-		this.disabled = options.disabled ?? false
-		this.permission = options.permission ?? 'public'
-		this.guildOnly = options.guildOnly ?? false
-		this.type = options.type ?? 'text'
-		this.args = options.args?.map(arg => new Arg(arg)) ?? []
-		this.subCommands = options.subCommands?.map(sub => new SubCommand(sub)) ?? []
-		this.execute = options.execute
-	}
+	constructor(
+		readonly name: string,
+		readonly description: string,
+		readonly details: string,
+		readonly aliases: string[],
+		readonly disabled: boolean,
+		readonly permission: CommandPermission,
+		readonly guildOnly: boolean,
+		readonly type: CommandType,
+		readonly args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>},
+		readonly execute: (args: ArgTypes, data: CommandExecuteData) => Awaitable<string>,
+	) { this.subcommands = [] }
+
+	addSubcommand<SubcommandArgTypes extends ArgTypesTemplate>({
+		name, description, aliases = [],
+		disabled = this.disabled, permission = this.permission, guildOnly = this.guildOnly, type = this.type,
+		args, execute,
+	}: SubcommandCreator<SubcommandArgTypes>): Command<ArgTypes> { this.subcommands.push({
+		name, description, aliases, 
+		disabled, permission, guildOnly, type,
+		args, execute
+	}); return this }
 
 	/**
 	 * converts this command into a slash command
@@ -67,24 +97,21 @@ export class Command {
 	 */
 	getSlashCommand(): RESTPostAPIApplicationCommandsJSONBody {
 		const command = new SlashCommandBuilder()
-			.setName(this.name)
-			.setDescription(this.description)
-			.setDefaultPermission(this.permission === 'public')
-		if (this.subCommands.length == 0) for (const arg of this.args) arg.addToCommand(command)
-		else for (const subCommand of this.subCommands) subCommand.addToCommand(command)
+			.setName(this.name).setDescription(this.description).setDefaultPermission(this.permission === 'public')
+
+		// add options to slash command
+		if (this.subcommands.length == 0) for (const name in this.args) addArgToCommand(command, name, this.args[name]);
+
+		// add subcommands to slash command
+		else for (const subcommand of this.subcommands) command.addSubcommand(slashSubcommand => {
+			slashSubcommand.setName(subcommand.name.toLowerCase()).setDescription(subcommand.description)
+			for (const name in subcommand.args) addArgToCommand(slashSubcommand, name, subcommand.args[name])
+			return slashSubcommand
+		})
+
 		return command.toJSON()
 	}
 
-	/**
-	 * tells whether a given text is using this command
-	 * @param text the text that is trying to run a command
-	 * @returns this command's name, or null the text doesn't match
-	 */
-	findKeyword(text: string) {
-		text = text.toLowerCase()
-		if (text.startsWith(this.name.toLowerCase())) return this.name
-		return this.aliases.find(alias => text.startsWith(alias.toLowerCase())) ?? null
-	}
 
 	/**
 	 * executes the command from a text message
@@ -94,8 +121,60 @@ export class Command {
 		if (this.disabled) return
 		if (this.guildOnly && message.channel.type === 'DM') return
 		if (this.permission == 'owner' && message.author.id !== process.env.OWNER) return
-		if (this.guildOnly && this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
-		message.reply(await this.execute(new TextArgs(message.content, this.args, this.subCommands), {
+		if (this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
+
+		const parsedArgs: {[key: string]: ArgType} = {}
+		let options: { [x: string]: Arg<any>; } = this.args
+		let args = [...message.content.matchAll(/[^\s"]+|"([^"]*)"/gi)].map(matches => matches[1] ?? matches[0])
+		const subcommand = this.subcommands.find(c => matchKeyword(c, args[0]))
+		if (subcommand) {
+			options = subcommand.args
+			args = args.slice(1)
+		}
+
+		let i = 0
+		for (const name in options) {
+			const option = options[name], arg = args[i]
+			if (!arg) {
+				if (!option.optional) return message.reply(`The argument \`<${name}>\` is required! Please re-enter the command`)
+			} else {
+
+				if (option.type === 'string') parsedArgs[name] = arg
+
+				else if (option.type === 'number') {
+					if (isNaN(Number(arg))) return message.reply(`The argument \`<${name}>\` must be a number! Please re-enter the command`)
+					parsedArgs[name] = Number(arg)
+				} 
+				else if (option.type === 'user') {
+					const userStr = /^(<@!)?[0-9]+(>)?$/.test(arg) ? arg.slice(3, -1) : arg
+					let user = null
+					if (/^[0-9]+$/.test(userStr)) user = await global.client.users.fetch(userStr)
+					else user = global.client.users.cache.find(({username}) => 
+						username.toLowerCase() === userStr.toLowerCase()) 
+						?? global.client.users.cache.find(({username}) => 
+						username.toLowerCase().includes(userStr.toLowerCase()))
+					if (!user) return message.reply(`I couldn't find the user, ${arg}. Try entering a different name`)
+					parsedArgs[name] = user
+				}
+				else if (option.type === 'member') {
+					const memberStr = /^(<@!)?[0-9]+(>)?$/.test(arg) ? arg.slice(3, -1) : arg
+					let member = null
+					if (/^[0-9]+$/.test(memberStr)) member = await global.guild.members.fetch(memberStr)
+					else member = (await global.guild.members.search({query: memberStr})).first()
+					if (!member) return message.reply(`I couldn't find the member, ${arg}. Try entering a different name`)
+					parsedArgs[name] = member
+				}
+				else if (option.type === 'channel') {
+					if (!/^(<#)?[0-9]+(>)?$/.test(arg)) return message.reply(`That isn't a valid channel! Try mentioning a channel`)
+					let channel = await global.guild.channels.fetch(arg.slice(2, -1))
+					if (!channel || channel.isThread()) return message.reply(`I couldn't find the channel, ${arg}. Try entering a different one`)
+					parsedArgs[name] = channel
+				}
+			}
+			i++
+		}
+
+		message.reply(await this.execute(parsedArgs as ArgTypes, {
 			user: message.author,
 			member: message.member ?? undefined,
 			permissions: message.member?.permissions
@@ -107,7 +186,23 @@ export class Command {
 	 * @param interaction the interaction that is calling this command
 	 */
 	async executeSlashCommand(interaction: CommandInteraction) {
-		await interaction.reply(await this.execute(new SlashArgs(interaction), {
+		const parsedArgs: {[key: string]: ArgType | null} = {}
+		for (const name in this.args) {
+			const arg = this.args[name]
+			if (arg.type === 'string') parsedArgs[name] = interaction.options.getString(name)
+			else if (arg.type === 'number') parsedArgs[name] = interaction.options.getNumber(name)
+			else if (arg.type === 'user') parsedArgs[name] = interaction.options.getUser(name)
+			else if (arg.type === 'member') {
+				const member = interaction.options.getMember(name.toLowerCase())
+				if (member instanceof GuildMember) parsedArgs[name] = member
+				else if (member) interaction.reply(`I couldn't find the member for the argument \`<${name}>\`! Try entering again`)
+			} else if (arg.type === 'channel') {
+				const channel = interaction.options.getChannel(name.toLowerCase())
+				if (channel instanceof GuildChannel) parsedArgs[name] = channel
+				else if (channel) interaction.reply(`I couldn't find the channel for the argument \`<${name}>\`! Try entering again`)
+			}
+		}
+		await interaction.reply(await this.execute(parsedArgs as ArgTypes, {
 			user: interaction.user,
 			member: (interaction.member instanceof GuildMember) ? interaction.member : undefined,
 			permissions: (interaction.member instanceof GuildMember) ? interaction.member.permissions : undefined
@@ -116,10 +211,37 @@ export class Command {
 
 }
 
-
-export type Category = {
-	name: string
-	description: string
-	commands: string[]
+function addArgToCommand<Type extends ArgType>(command: SlashCommandBuilder | SlashCommandSubcommandBuilder, name: string, arg: Arg<Type>) {
+	const setOption = <
+		T extends SlashCommandStringOption | SlashCommandNumberOption | SlashCommandUserOption | SlashCommandChannelOption
+	>(option: T): T => option.setName(name).setDescription(arg.description).setRequired(!arg.optional) as T
+	if (arg.type === 'string') command.addStringOption(setOption)
+		// .addChoices(this.choices.map(({name, value}) => [name, value as string])))
+	else if (arg.type === 'number') command.addNumberOption(setOption)
+		// .addChoices(this.choices.map(({name, value}) => [name, value as number])))
+	else if (arg.type === 'user') command.addUserOption(setOption)
+	else if (arg.type === 'member') command.addUserOption(setOption)
+	else if (arg.type === 'channel') command.addChannelOption(setOption)
 }
-export type CategoryOptions = Omit<Category, 'commands'>
+
+/**
+ * tells whether a given text is using this command
+ * @param text the text that is trying to run a command
+ * @returns this command's name, or null the text doesn't match
+ */
+export function matchKeyword(command: Command<any> | Subcommand<any>, text: string) {
+	if (!text) return undefined
+	text = text.toLowerCase()
+	if (text.startsWith(command.name.toLowerCase())) return command.name
+	return command.aliases.find(alias => text.startsWith(alias.toLowerCase()))
+}
+
+export function createCommand<ArgTypes extends ArgTypesTemplate>({
+	name, description, details = '', aliases = [],
+	disabled = false, permission = 'public', guildOnly = false,type = 'text',
+	args, execute,
+}: CommandCreator<ArgTypes>): Command<ArgTypes> { return new Command(
+	name, description, details, aliases,
+	disabled, permission, guildOnly, type,
+	args, execute,
+)}
