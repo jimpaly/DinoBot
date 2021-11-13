@@ -4,6 +4,8 @@ module.exports = createModule({
 	directory: 'utility',
 	name: 'Utility',
 	commands: [
-		'prefix'
+		'prefix',
+		'ping',
+		'color',
 	]
 })

@@ -19,7 +19,7 @@ module.exports = createCommand<{
 			optional: true,
 		}
 	},
-	async execute({prefix}, { member, permissions }) {
+	async execute({prefix}, _, { member, permissions }) {
 
 		if (!prefix) return `Prefix: ${global.config.prefix}`
 

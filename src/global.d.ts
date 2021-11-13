@@ -5,9 +5,7 @@ import { RxLocalDocument } from 'rxdb'
 
 declare global {
 	// var config: RxLocalDocument<Database, ConfigDoc>
-	var config: ConfigDoc = {
-		prefix: 'hi'
-	}
+	var config: ConfigDoc
 	var client: BotClient
 	var guild: Guild
 	var database: Database

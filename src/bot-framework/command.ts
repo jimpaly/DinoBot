@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, SlashCommandChannelOption, SlashCommandNumberOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, SlashCommandUserOption } from "@discordjs/builders"
+import { MessageOptions } from "child_process"
 import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
-import { Awaitable, Channel, CommandInteraction, GuildChannel, GuildMember, Message, Permissions, User } from "discord.js"
+import { Awaitable, Channel, CommandInteraction, GuildChannel, GuildMember, Message, Permissions, ReplyMessageOptions, User } from "discord.js"
 
 type ArgTypeStr = 'string' | 'number' | 'user' | 'member' | 'channel'
 type ArgType = string | number | User | GuildMember | Channel
@@ -22,19 +23,24 @@ export interface Arg<Type extends ArgType> {
 	optional: undefined extends Type ? true : false
 }
 
+interface CommandExecuteData {
+	user: User
+	member?: GuildMember
+	permissions?: Permissions
+}
+
+type ExecuteFunction<ArgTypes extends ArgTypesTemplate> = (
+	args: ArgTypes, 
+	reply: (options: string | ReplyMessageOptions) => Promise<any>, 
+	data: CommandExecuteData
+) => Awaitable<string | ReplyMessageOptions | void>
 export interface CommandBlueprint<ArgTypes extends ArgTypesTemplate> {
 	name: string
 	description: string
 	disabled?: boolean
 	aliases?: string[]
 	args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>}
-	execute: (args: ArgTypes, data: CommandExecuteData) => Awaitable<string>
-}
-
-interface CommandExecuteData {
-	user: User
-	member?: GuildMember
-	permissions?: Permissions
+	execute: ExecuteFunction<ArgTypes>
 }
 interface CommandCreator<ArgTypes extends ArgTypesTemplate> extends CommandBlueprint<ArgTypes> {
 	details?: string
@@ -57,7 +63,7 @@ interface Subcommand<ArgTypes extends ArgTypesTemplate> {
 	guildOnly: boolean
 	type: CommandType
 	args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>}
-	execute: (args: ArgTypes, data: CommandExecuteData) => Awaitable<string>
+	execute: ExecuteFunction<ArgTypes>
 }
 
 /**
@@ -78,7 +84,7 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 		readonly guildOnly: boolean,
 		readonly type: CommandType,
 		readonly args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>},
-		readonly execute: (args: ArgTypes, data: CommandExecuteData) => Awaitable<string>,
+		readonly execute: ExecuteFunction<ArgTypes>,
 	) { this.subcommands = [] }
 
 	addSubcommand<SubcommandArgTypes extends ArgTypesTemplate>({
@@ -174,11 +180,16 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 			i++
 		}
 
-		message.reply(await this.execute(parsedArgs as ArgTypes, {
+		let lastMsg: Message | undefined
+		const reply = await this.execute(parsedArgs as ArgTypes, async option => {
+			if (!lastMsg) lastMsg = await message.reply(option)
+			else await lastMsg.reply(option)
+		}, {
 			user: message.author,
 			member: message.member ?? undefined,
 			permissions: message.member?.permissions
-		}))
+		})
+		if (reply) message.reply(reply)
 	}
 
 	/**
@@ -202,11 +213,15 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 				else if (channel) interaction.reply(`I couldn't find the channel for the argument \`<${name}>\`! Try entering again`)
 			}
 		}
-		await interaction.reply(await this.execute(parsedArgs as ArgTypes, {
+		const reply = await this.execute(parsedArgs as ArgTypes, async options => {
+			if (!interaction.replied) await interaction.reply(options)
+			else await interaction.followUp(options)
+		}, {
 			user: interaction.user,
 			member: (interaction.member instanceof GuildMember) ? interaction.member : undefined,
 			permissions: (interaction.member instanceof GuildMember) ? interaction.member.permissions : undefined
-		}))
+		})
+		if (reply) interaction.replied ? interaction.followUp(reply) : interaction.reply(reply);
 	}
 
 }

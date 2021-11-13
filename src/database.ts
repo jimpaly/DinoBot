@@ -16,32 +16,32 @@ export async function load() {
 	})
 }
 
-export type ConfigID = 'config'
+type ConfigID = 'config'
+type ConfigType<ID extends ConfigID> = ID extends 'config' ? ConfigDoc : any
 export interface ConfigDoc {
 	prefix: string
+	color: string
 	hello: {
 			mode: string
-			message: string[]
+			message: string
 	}
 }
 export async function config() {
 	await loadConfig('config', {
 		prefix: ',',
+		color: '#000000',
 		hello: {
 			mode: '',
-			message: ['message', '2'],
+			message: 'message',
 		},
-		newelement: 3
 	})
 }
 export async function saveConfig(id?: ConfigID) {
 	if (!id || id === 'config') await global.database.upsertLocal('config', global.config)
 }
 
-function loadConfig<ID extends ConfigID, T extends (
-	ID extends 'config' ? ConfigDoc : any
-)>(id: ID, defaults: T) {
-	return new Promise<void>(resolve => global.database.getLocal$<T>(id).subscribe(async document => {
+function loadConfig<ID extends ConfigID>(id: ID, defaults: ConfigType<ID>) {
+	return new Promise<void>(resolve => global.database.getLocal$<ConfigType<ID>>(id).subscribe(async document => {
 		if (!document) global[id] = defaults
 		else global[id] = copy(document.toJSON(), defaults)
 		resolve()
