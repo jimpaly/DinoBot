@@ -8,5 +8,6 @@ module.exports = createModule({
 	],
 	listeners: [
 		'count-listener',
+		'reactor',
 	]
 })
