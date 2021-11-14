@@ -42,6 +42,7 @@ export function print(x: number, message: string) {
 	});
 
 	await global.client.loadCommands()
+	await global.client.loadListeners()
 
 	print(70, `Logging into Discord`)
 	global.client.login(process.env.BOT_TOKEN)

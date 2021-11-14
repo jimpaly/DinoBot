@@ -1,20 +1,41 @@
 import glob from 'glob'
 import { promisify } from 'util'
-import { Client, Collection, Interaction, Message } from "discord.js"
+import { Client, Collection } from "discord.js"
 import { Module, Command } from '.'
 import { matchKeyword } from './command'
+import { Listener } from './listener'
 
 const globPromise = promisify(glob)
 
 export class BotClient extends Client {
-	commands: Collection<string, Command<any>> = new Collection()
+	commands: Collection<string, Command<any>>
+	eventListeners: Listener[]
+
+	async loadListeners() {
+		this.eventListeners = []
+		for (const file of await globPromise(`${__dirname}/../modules/**/index.js`)) {
+			const module = (await require(file)) as Module
+			this.eventListeners.push(...await module.getListeners())
+		}
+		this.on('messageCreate', (message) => {
+			for (const listener of this.eventListeners) if (listener.isMessage()) 
+				listener.messageCreate(message) 
+		})
+		this.on('messageDelete', (message) => {
+			for (const listener of this.eventListeners) if (listener.isMessage()) 
+				listener.messageDelete(message) 
+		})
+		this.on('messageDeleteBulk', (messages) => {
+			for (const listener of this.eventListeners) if (listener.isMessage()) 
+				messages.forEach(message => listener.messageDelete(message))
+		})
+	}
 
 	/**
 	 * loads all commands from files to this bot client
 	 */
 	async loadCommands() {
 		this.commands = new Collection()
-
 		for (const file of await globPromise(`${__dirname}/../modules/**/index.js`)) {
 			const module = (await require(file)) as Module
 			for (const command of await module.getCommands()) {
@@ -22,8 +43,7 @@ export class BotClient extends Client {
 				// TODO: add to categories
 			}
 		}
-
-		this.on('messageCreate', async (message: Message): Promise<any> => {
+		this.on('messageCreate', async (message): Promise<any> => {
 				//if(message.author.bot) return
 				if(!this.user || message.author.id === this.user.id) return
 				// TODO: check disabled channel
@@ -44,8 +64,7 @@ export class BotClient extends Client {
 					}
 				}
 		})
-
-		this.on('interactionCreate', async (interaction: Interaction) => {
+		this.on('interactionCreate', async (interaction) => {
 			if (!interaction.isCommand()) return
 			// TODO: check disabled channel?
 			const command = this.commands.get(interaction.commandName)

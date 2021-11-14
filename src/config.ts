@@ -1,6 +1,6 @@
 import { DeepReadonly } from 'rxdb/dist/types/types';
 
-class ConfigDoc {
+abstract class ConfigDoc {
 	prefix: string
 	color: string
 	activity: {
@@ -8,16 +8,15 @@ class ConfigDoc {
 		message: string
 	}
 	disabledChannels: string[]
+	counting: string
 }
 
 export class Config extends ConfigDoc {
 
 	constructor(doc: ConfigDoc) {
 		super()
-		this.prefix = doc.prefix
-		this.color = doc.color
-		this.activity = doc.activity
-		this.disabledChannels = doc.disabledChannels
+		for (const key in doc) 
+			this[key as keyof ConfigDoc] = doc[key as keyof ConfigDoc] as any
 	}
 
 	async save() {
@@ -36,6 +35,7 @@ export async function load() {
 				message: 'message',
 			},
 			disabledChannels: [],
+			counting: '',
 		}))
 		resolve()
 	}))

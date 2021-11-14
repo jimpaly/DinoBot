@@ -124,6 +124,7 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 	 * @param message the message that is calling this command
 	 */
 	async executeTextCommand(message: Message) {
+		if (global.config.disabledChannels.includes(message.channel.id)) return
 		if (this.disabled) return
 		if (this.guildOnly && message.channel.type === 'DM') return
 		if (this.permission == 'owner' && message.author.id !== process.env.OWNER) return
@@ -195,6 +196,7 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 	 * @param interaction the interaction that is calling this command
 	 */
 	async executeSlashCommand(interaction: CommandInteraction) {
+		if (global.config.disabledChannels.includes(interaction.channelId)) return
 		const subcommand = interaction.options.getSubcommand(false)
 		const command = subcommand ? this.subcommands.find(c => c.name === subcommand) ?? this : this
 		const parsedArgs: {[key: string]: ArgType | null} = {}

@@ -10,3 +10,7 @@ export {
 	Command, createCommand,
 	CommandPermission, CommandType,
 } from './command'
+
+export {
+	createMessageListener, MessageListener
+} from './listener'

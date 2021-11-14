@@ -1,9 +1,11 @@
 import { Command } from "."
+import { Listener } from "./listener"
 
 interface ModuleCreator {
 	directory: string
 	name: string
-	commands: string[]
+	commands?: string[]
+	listeners?: string[]
 }
 
 /**
@@ -16,6 +18,7 @@ export class Module {
 		readonly name: string,
 		readonly directory: string,
 		readonly commands: string[],
+		readonly listeners: string[],
 	) { }
 
 	/**
@@ -30,10 +33,18 @@ export class Module {
 		return commands
 	}
 
+	async getListeners(): Promise<Listener[]> {
+		const listeners: Listener[] = []
+		for (const file of this.listeners) {
+			listeners.push((await require(`../modules/${this.directory}/${file}.js`)) as Listener)
+		}
+		return listeners
+	}
+
 }
 
 export function createModule({
-	name, directory, commands,
+	name, directory, commands = [], listeners = []
 }: ModuleCreator): Module { return new Module(
-	name, directory, commands,
+	name, directory, commands, listeners
 )}
