@@ -1,13 +1,13 @@
 import { createCommand } from "../../bot-framework";
 import { stripIndent } from 'common-tags'
-import { Channel, GuildMember, User } from "discord.js";
+import { GuildChannel, GuildMember, User } from "discord.js";
 
 module.exports = createCommand<{
 	strOption?: string,
 	numOption?: number,
 	userOption?: User,
 	memberOption?: GuildMember,
-	channelOption?: Channel,
+	channelOption?: GuildChannel,
 }>({
 	name: 'test',
 	description: 'command for testing',

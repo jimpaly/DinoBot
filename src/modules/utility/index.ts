@@ -5,6 +5,7 @@ module.exports = createModule({
 	name: 'Utility',
 	commands: [
 		'prefix',
+		'perm',
 		'ping',
 		'color',
 	]

@@ -1,14 +1,13 @@
 import { SlashCommandBuilder, SlashCommandChannelOption, SlashCommandNumberOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, SlashCommandUserOption } from "@discordjs/builders"
-import { MessageOptions } from "child_process"
 import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
-import { Awaitable, Channel, CommandInteraction, GuildChannel, GuildMember, Message, Permissions, ReplyMessageOptions, User } from "discord.js"
+import { Awaitable, CommandInteraction, DMChannel, Guild, GuildChannel, GuildMember, Message, NewsChannel, PartialDMChannel, Permissions, ReplyMessageOptions, TextBasedChannels, TextChannel, ThreadChannel, User } from "discord.js"
 
 type ArgTypeStr = 'string' | 'number' | 'user' | 'member' | 'channel'
-type ArgType = string | number | User | GuildMember | Channel
+type ArgType = string | number | User | GuildMember | GuildChannel
 type ArgTypeFromStr<Type extends ArgTypeStr> = Type extends 'string' ? string : Type extends 'number' ? number :
-	Type extends 'user' ? User : Type extends 'member' ? GuildMember : Type extends 'channel' ? Channel : ArgType
+	Type extends 'user' ? User : Type extends 'member' ? GuildMember : Type extends 'channel' ? GuildChannel : ArgType
 type ArgTypeToStr<Type extends ArgType> = Type extends string ? 'string' : Type extends number ? 'number' :
-	Type extends User ? 'user' : Type extends GuildMember ? 'member' : Type extends Channel ? 'channel' : ArgTypeStr
+	Type extends User ? 'user' : Type extends GuildMember ? 'member' : Type extends GuildChannel ? 'channel' : ArgTypeStr
 
 export type ArgTypesTemplate = {[key: string]: ArgType}
 
@@ -27,6 +26,7 @@ interface CommandExecuteData {
 	user: User
 	member?: GuildMember
 	permissions?: Permissions
+	channel?: TextBasedChannels
 }
 
 type ExecuteFunction<ArgTypes extends ArgTypesTemplate> = (
@@ -130,17 +130,14 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 		if (this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
 
 		const parsedArgs: {[key: string]: ArgType} = {}
-		let options: { [x: string]: Arg<any>; } = this.args
 		let args = [...message.content.matchAll(/[^\s"]+|"([^"]*)"/gi)].map(matches => matches[1] ?? matches[0])
 		const subcommand = this.subcommands.find(c => matchKeyword(c, args[0]))
-		if (subcommand) {
-			options = subcommand.args
-			args = args.slice(1)
-		}
+		const command = subcommand ?? this
+		if (subcommand) args = args.slice(1)
 
 		let i = 0
-		for (const name in options) {
-			const option = options[name], arg = args[i]
+		for (const name in command.args) {
+			const option = command.args[name], arg = args[i]
 			if (!arg) {
 				if (!option.optional) return message.reply(`The argument \`<${name}>\` is required! Please re-enter the command`)
 			} else {
@@ -181,13 +178,14 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 		}
 
 		let lastMsg: Message | undefined
-		const reply = await this.execute(parsedArgs as ArgTypes, async option => {
+		const reply = await command.execute(parsedArgs as ArgTypes, async option => {
 			if (!lastMsg) lastMsg = await message.reply(option)
 			else await lastMsg.reply(option)
 		}, {
 			user: message.author,
 			member: message.member ?? undefined,
-			permissions: message.member?.permissions
+			permissions: message.member?.permissions,
+			channel: message.channel
 		})
 		if (reply) message.reply(reply)
 	}
@@ -197,9 +195,11 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 	 * @param interaction the interaction that is calling this command
 	 */
 	async executeSlashCommand(interaction: CommandInteraction) {
+		const subcommand = interaction.options.getSubcommand(false)
+		const command = subcommand ? this.subcommands.find(c => c.name === subcommand) ?? this : this
 		const parsedArgs: {[key: string]: ArgType | null} = {}
-		for (const name in this.args) {
-			const arg = this.args[name]
+		for (const name in command.args) {
+			const arg = command.args[name]
 			if (arg.type === 'string') parsedArgs[name] = interaction.options.getString(name)
 			else if (arg.type === 'number') parsedArgs[name] = interaction.options.getNumber(name)
 			else if (arg.type === 'user') parsedArgs[name] = interaction.options.getUser(name)
@@ -213,13 +213,14 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 				else if (channel) interaction.reply(`I couldn't find the channel for the argument \`<${name}>\`! Try entering again`)
 			}
 		}
-		const reply = await this.execute(parsedArgs as ArgTypes, async options => {
+		const reply = await command.execute(parsedArgs as ArgTypes, async options => {
 			if (!interaction.replied) await interaction.reply(options)
 			else await interaction.followUp(options)
 		}, {
 			user: interaction.user,
 			member: (interaction.member instanceof GuildMember) ? interaction.member : undefined,
-			permissions: (interaction.member instanceof GuildMember) ? interaction.member.permissions : undefined
+			permissions: (interaction.member instanceof GuildMember) ? interaction.member.permissions : undefined,
+			channel: interaction.channel ?? await global.guild.channels.fetch(interaction.channelId) as TextChannel ?? undefined
 		})
 		if (reply) interaction.replied ? interaction.followUp(reply) : interaction.reply(reply);
 	}

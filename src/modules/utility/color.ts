@@ -20,11 +20,11 @@ module.exports = createCommand<{
 			optional: true,
 		}
 	},
-	execute({color}) {
+	async execute({color}) {
 		// Set the color to the color config file
 		if(color) {
 			global.config.color = color
-			global.database.upsertLocal('config', global.config)
+			await global.config.save()
 			return {
 				embeds: [{
 					title: `Color now set to: ${global.config.color}`,

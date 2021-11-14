@@ -1,11 +1,12 @@
 import { Guild } from "discord.js"
 import { BotClient } from "./bot-framework"
-import { ConfigDoc, Database } from './database'
+import { Database } from './database'
 import { RxLocalDocument } from 'rxdb'
+import { Config } from "./config"
 
 declare global {
 	// var config: RxLocalDocument<Database, ConfigDoc>
-	var config: ConfigDoc
+	var config: Config
 	var client: BotClient
 	var guild: Guild
 	var database: Database

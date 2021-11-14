@@ -12,6 +12,7 @@ import { Intents } from 'discord.js'
 import { BotClient } from './bot-framework'
 import * as dotenv from 'dotenv'
 import * as database from './database'
+import * as config from './config'
 
 export function print(x: number, message: string) {
 	readLine.cursorTo(process.stdout, x)
@@ -25,7 +26,7 @@ export function print(x: number, message: string) {
 	dotenv.config();
 
 	await database.load()
-	await database.config()
+	await config.load()
 	print(30, `Loaded database ./db/${process.env.DATABASE}`)
 
 	// Create Discord client

@@ -27,7 +27,7 @@ module.exports = createCommand<{
 			return `You need to have admin permission to set the bot prefix!`
 
 		global.config.prefix = prefix
-		await global.database.upsertLocal('config', global.config)
+		await global.config.save()
 		return `Prefix set to: ${global.config.prefix}`
 	}
 })
