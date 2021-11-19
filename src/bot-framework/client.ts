@@ -44,9 +44,9 @@ export class BotClient extends Client {
 			}
 		}
 		this.on('messageCreate', async (message): Promise<any> => {
-				//if(message.author.bot) return
-				if(!this.user || message.author.id === this.user.id) return
-				// TODO: check disabled channel
+			//if(message.author.bot) return
+			if(!this.user || message.author.id === this.user.id) return
+			// TODO: check disabled channel
 
 			// a text is a command if it starts with the required prefix
 			if(message.content.startsWith(global.config.prefix)) {
@@ -66,12 +66,14 @@ export class BotClient extends Client {
 		})
 		this.on('interactionCreate', async (interaction) => {
 			if (!interaction.isCommand()) return
+			if (global.config.disabledChannels.includes(interaction.channelId)) return interaction.reply({
+				content: `Oops! It looks like commands are disabled in this channel`, ephemeral: true})
 			// TODO: check disabled channel?
 			const command = this.commands.get(interaction.commandName)
 			if (command && command.type !== 'text') {
 				await command.executeSlashCommand(interaction)
 			} else {
-				interaction.reply(`Oops! It looks like that command doesn't exist anymore! Please contact <@!${process.env.OWNER}>`)
+				interaction.reply(`Oof! It looks like that command doesn't exist anymore! Please contact <@!${process.env.OWNER}>`)
 			}
 		})
 	}

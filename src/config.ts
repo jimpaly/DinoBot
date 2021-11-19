@@ -9,6 +9,7 @@ abstract class ConfigDoc {
 	}
 	disabledChannels: string[]
 	counting: string
+	reactionDisabledMembers: string[]
 }
 
 export class Config extends ConfigDoc {
@@ -36,6 +37,7 @@ export async function load() {
 			},
 			disabledChannels: [],
 			counting: '',
+			reactionDisabledMembers: [],
 		}))
 		resolve()
 	}))

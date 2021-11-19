@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, SlashCommandChannelOption, SlashCommandNumberOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, SlashCommandUserOption } from "@discordjs/builders"
+import { oneLine } from "common-tags"
 import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
 import { Awaitable, CommandInteraction, DMChannel, Guild, GuildChannel, GuildMember, Message, NewsChannel, PartialDMChannel, Permissions, ReplyMessageOptions, TextBasedChannels, TextChannel, ThreadChannel, User } from "discord.js"
 
@@ -20,6 +21,7 @@ export interface Arg<Type extends ArgType> {
 	description: string
 	type: ArgTypeToStr<Exclude<Type, undefined>>
 	optional: undefined extends Type ? true : false
+	choices?: {[key: string]: Type[]}
 }
 
 interface CommandExecuteData {
@@ -143,11 +145,25 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 				if (!option.optional) return message.reply(`The argument \`<${name}>\` is required! Please re-enter the command`)
 			} else {
 
-				if (option.type === 'string') parsedArgs[name] = arg
-
+				if (option.type === 'string') {
+					if (!option.choices) parsedArgs[name] = arg
+					else {
+						const choice = Object.entries(option.choices).find(([_, values]) => values.includes(arg))
+						if (!choice) return message.reply(oneLine`"${arg}" is not a valid choice for the argument \`<${name}>\`! 
+							Try using one of the following: "${Object.values(option.choices).map(values => values[0]).join('", "')}"`)
+						else parsedArgs[name] = choice[0]
+					}
+				}
 				else if (option.type === 'number') {
 					if (isNaN(Number(arg))) return message.reply(`The argument \`<${name}>\` must be a number! Please re-enter the command`)
-					parsedArgs[name] = Number(arg)
+					const number = Number(arg)
+					if (!option.choices) parsedArgs[name] = number
+					else {
+						const choice = Object.entries(option.choices).find(([_, values]) => values.includes(number))
+						if (!choice) return message.reply(oneLine`${number} is not a valid choice for the argument \`<${name}>\`! 
+							Try using one of the following: ${Object.values(option.choices).map(values => values[0]).join(', ')}`)
+						else parsedArgs[name] = choice[0]
+					}
 				} 
 				else if (option.type === 'user') {
 					const userStr = /^(<@!)?[0-9]+(>)?$/.test(arg) ? arg.slice(3, -1) : arg
@@ -196,7 +212,6 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 	 * @param interaction the interaction that is calling this command
 	 */
 	async executeSlashCommand(interaction: CommandInteraction) {
-		if (global.config.disabledChannels.includes(interaction.channelId)) return
 		const subcommand = interaction.options.getSubcommand(false)
 		const command = subcommand ? this.subcommands.find(c => c.name === subcommand) ?? this : this
 		const parsedArgs: {[key: string]: ArgType | null} = {}
@@ -233,10 +248,10 @@ function addArgToCommand<Type extends ArgType>(command: SlashCommandBuilder | Sl
 	const setOption = <
 		T extends SlashCommandStringOption | SlashCommandNumberOption | SlashCommandUserOption | SlashCommandChannelOption
 	>(option: T): T => option.setName(name).setDescription(arg.description).setRequired(!arg.optional) as T
-	if (arg.type === 'string') command.addStringOption(setOption)
-		// .addChoices(this.choices.map(({name, value}) => [name, value as string])))
-	else if (arg.type === 'number') command.addNumberOption(setOption)
-		// .addChoices(this.choices.map(({name, value}) => [name, value as number])))
+	if (arg.type === 'string') command.addStringOption(option => setOption(option)
+		.addChoices(Object.entries(arg.choices ?? {}).map(([name, values]) => [name, values[0] as string])))
+	else if (arg.type === 'number') command.addNumberOption(option => setOption(option)
+		.addChoices(Object.entries(arg.choices ?? {}).map(([name, values]) => [name, values[0] as number])))
 	else if (arg.type === 'user') command.addUserOption(setOption)
 	else if (arg.type === 'member') command.addUserOption(setOption)
 	else if (arg.type === 'channel') command.addChannelOption(setOption)
