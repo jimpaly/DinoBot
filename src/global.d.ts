@@ -1,5 +1,5 @@
-import { Guild } from "discord.js"
-import { BotClient } from "./bot-framework"
+import { Guild, Client } from "discord.js"
+import { Module } from './bot-framework'
 import { Database } from './database'
 import { RxLocalDocument } from 'rxdb'
 import { Config } from "./config"
@@ -7,8 +7,9 @@ import { Config } from "./config"
 declare global {
 	// var config: RxLocalDocument<Database, ConfigDoc>
 	var config: Config
-	var client: BotClient
+	var client: Client
 	var guild: Guild
+	var modules: Module[]
 	var database: Database
 	namespace NodeJS {
     interface ProcessEnv {

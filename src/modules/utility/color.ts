@@ -5,7 +5,7 @@ module.exports = createCommand<{
 	color?: string
 }>({
 	name: 'color',
-	description: 'Color',
+	description: 'update the bot color',
 	details: oneLine`
 		Change the bot color! 
 		This color will mainly be used in embeds (the colored bar at the left)

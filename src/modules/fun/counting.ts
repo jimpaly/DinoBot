@@ -7,7 +7,7 @@ module.exports = createCommand<{
 	channel?: GuildChannel,
 }>({
 	name: 'counting',
-	description: 'Counting Game',
+	description: 'Play the counting game!',
 	details: stripIndents`
 			Play the counting game in {counting.channel}!
 			This command is used to set that counting channel.

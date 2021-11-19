@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, SlashCommandChannelOption, SlashCommandNumberOption, SlashCommandStringOption, SlashCommandSubcommandBuilder, SlashCommandUserOption } from "@discordjs/builders"
 import { oneLine } from "common-tags"
-import { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
-import { Awaitable, CommandInteraction, DMChannel, Guild, GuildChannel, GuildMember, Message, NewsChannel, PartialDMChannel, Permissions, ReplyMessageOptions, TextBasedChannels, TextChannel, ThreadChannel, User } from "discord.js"
+import { APIMessage, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
+import { Awaitable, CommandInteraction, DMChannel, Guild, GuildChannel, GuildMember, InteractionReplyOptions, Message, MessageEditOptions, NewsChannel, PartialDMChannel, Permissions, ReplyMessageOptions, TextBasedChannels, TextChannel, ThreadChannel, User } from "discord.js"
 
 type ArgTypeStr = 'string' | 'number' | 'user' | 'member' | 'channel'
 type ArgType = string | number | User | GuildMember | GuildChannel
@@ -33,13 +33,13 @@ interface CommandExecuteData {
 
 type ExecuteFunction<ArgTypes extends ArgTypesTemplate> = (
 	args: ArgTypes, 
-	reply: (options: string | ReplyMessageOptions) => Promise<any>, 
+	reply: (options: string | ReplyMessageOptions | InteractionReplyOptions) => Promise<Message>, 
 	data: CommandExecuteData
 ) => Awaitable<string | ReplyMessageOptions | void>
 export interface CommandBlueprint<ArgTypes extends ArgTypesTemplate> {
 	name: string
 	description: string
-	disabled?: boolean
+	hidden?: boolean
 	aliases?: string[]
 	args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>}
 	execute: ExecuteFunction<ArgTypes>
@@ -60,7 +60,7 @@ interface Subcommand<ArgTypes extends ArgTypesTemplate> {
 	name: string
 	description: string
 	aliases: string[]
-	disabled: boolean
+	hidden: boolean
 	permission: CommandPermission
 	guildOnly: boolean
 	type: CommandType
@@ -81,7 +81,7 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 		readonly description: string,
 		readonly details: string,
 		readonly aliases: string[],
-		readonly disabled: boolean,
+		readonly hidden: boolean,
 		readonly permission: CommandPermission,
 		readonly guildOnly: boolean,
 		readonly type: CommandType,
@@ -91,11 +91,11 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 
 	addSubcommand<SubcommandArgTypes extends ArgTypesTemplate>({
 		name, description, aliases = [],
-		disabled = this.disabled, permission = this.permission, guildOnly = this.guildOnly, type = this.type,
+		hidden = this.hidden, permission = this.permission, guildOnly = this.guildOnly, type = this.type,
 		args, execute,
 	}: SubcommandCreator<SubcommandArgTypes>): Command<ArgTypes> { this.subcommands.push({
 		name, description, aliases, 
-		disabled, permission, guildOnly, type,
+		hidden, permission, guildOnly, type,
 		args, execute
 	}); return this }
 
@@ -104,20 +104,43 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 	 * @returns a slash command
 	 */
 	getSlashCommand(): RESTPostAPIApplicationCommandsJSONBody {
-		const command = new SlashCommandBuilder()
-			.setName(this.name).setDescription(this.description).setDefaultPermission(this.permission === 'public')
 
-		// add options to slash command
-		if (this.subcommands.length == 0) for (const name in this.args) addArgToCommand(command, name, this.args[name]);
+		const argTypes = {
+			string: ApplicationCommandOptionType.String,
+			number: ApplicationCommandOptionType.Number,
+			user: ApplicationCommandOptionType.User,
+			member: ApplicationCommandOptionType.User,
+			channel: ApplicationCommandOptionType.Channel
+		}
 
-		// add subcommands to slash command
-		else for (const subcommand of this.subcommands) command.addSubcommand(slashSubcommand => {
-			slashSubcommand.setName(subcommand.name.toLowerCase()).setDescription(subcommand.description)
-			for (const name in subcommand.args) addArgToCommand(slashSubcommand, name, subcommand.args[name])
-			return slashSubcommand
-		})
+		function getCommandOptions<Type extends ArgTypesTemplate>(command: Command<Type> | Subcommand<Type>) {
+			return Object.keys(command.args).map(name => { return {
+				type: argTypes[command.args[name].type as ArgTypeStr],
+				name: name,
+				description: command.args[name].description,
+				required: !command.args[name].optional,
+				choices: Object.entries(command.args[name].choices ?? {}).map(([name, values]) => {return {
+					name: name,
+					value: values[0] as string | number,
+				}}),
+			}})
+		}
 
-		return command.toJSON()
+		return {
+			type: ApplicationCommandType.ChatInput,
+			name: this.name,
+			description: this.description,
+			default_permission: this.permission === 'public',
+			options: this.subcommands.length == 0 ? getCommandOptions(this) 
+			: this.subcommands.map(subcommand => { return {
+					type: ApplicationCommandOptionType.Subcommand,
+					name: subcommand.name,
+					description: subcommand.description,
+					options: getCommandOptions(subcommand)
+				}})
+		}
+
+		// return command.toJSON()
 	}
 
 
@@ -126,8 +149,7 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 	 * @param message the message that is calling this command
 	 */
 	async executeTextCommand(message: Message) {
-		if (global.config.disabledChannels.includes(message.channel.id)) return
-		if (this.disabled) return
+		if (this.hidden) return
 		if (this.guildOnly && message.channel.type === 'DM') return
 		if (this.permission == 'owner' && message.author.id !== process.env.OWNER) return
 		if (this.permission == 'admin' && !message.member?.permissions.has('ADMINISTRATOR')) return
@@ -197,7 +219,8 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 		let lastMsg: Message | undefined
 		const reply = await command.execute(parsedArgs as ArgTypes, async option => {
 			if (!lastMsg) lastMsg = await message.reply(option)
-			else await lastMsg.reply(option)
+			else lastMsg = await lastMsg.reply(option)
+			return lastMsg
 		}, {
 			user: message.author,
 			member: message.member ?? undefined,
@@ -231,8 +254,13 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 			}
 		}
 		const reply = await command.execute(parsedArgs as ArgTypes, async options => {
-			if (!interaction.replied) await interaction.reply(options)
-			else await interaction.followUp(options)
+			let message: Message | APIMessage | undefined
+			if (!interaction.replied) {
+				await interaction.reply(options)
+				message = await interaction.fetchReply()
+			} else message = await interaction.followUp(options)
+			if (message instanceof Message) return message
+			throw new Error(`Message isn't cached! Received API message :(`)
 		}, {
 			user: interaction.user,
 			member: (interaction.member instanceof GuildMember) ? interaction.member : undefined,
@@ -242,19 +270,6 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 		if (reply) interaction.replied ? interaction.followUp(reply) : interaction.reply(reply);
 	}
 
-}
-
-function addArgToCommand<Type extends ArgType>(command: SlashCommandBuilder | SlashCommandSubcommandBuilder, name: string, arg: Arg<Type>) {
-	const setOption = <
-		T extends SlashCommandStringOption | SlashCommandNumberOption | SlashCommandUserOption | SlashCommandChannelOption
-	>(option: T): T => option.setName(name).setDescription(arg.description).setRequired(!arg.optional) as T
-	if (arg.type === 'string') command.addStringOption(option => setOption(option)
-		.addChoices(Object.entries(arg.choices ?? {}).map(([name, values]) => [name, values[0] as string])))
-	else if (arg.type === 'number') command.addNumberOption(option => setOption(option)
-		.addChoices(Object.entries(arg.choices ?? {}).map(([name, values]) => [name, values[0] as number])))
-	else if (arg.type === 'user') command.addUserOption(setOption)
-	else if (arg.type === 'member') command.addUserOption(setOption)
-	else if (arg.type === 'channel') command.addChannelOption(setOption)
 }
 
 /**
@@ -271,10 +286,10 @@ export function matchKeyword(command: Command<any> | Subcommand<any>, text: stri
 
 export function createCommand<ArgTypes extends ArgTypesTemplate>({
 	name, description, details = '', aliases = [],
-	disabled = false, permission = 'public', guildOnly = false,type = 'text',
+	hidden = false, permission = 'public', guildOnly = false,type = 'text',
 	args, execute,
 }: CommandCreator<ArgTypes>): Command<ArgTypes> { return new Command(
 	name, description, details, aliases,
-	disabled, permission, guildOnly, type,
+	hidden, permission, guildOnly, type,
 	args, execute,
 )}

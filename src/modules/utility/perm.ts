@@ -18,10 +18,7 @@ function enable(...ids: string[]) {
 
 module.exports = createCommand({
 	name: 'perm',
-	description: 'Channel Permissions',
-	details: oneLine`
-			🥺 You can change which channels I have access to...
-	`,
+	description: 'Change which channels the bot has access to',
 	aliases: ['perms', 'permission', 'permissions'],
 	permission: 'admin',
 	guildOnly: true,

@@ -4,7 +4,7 @@ module.exports = createCommand<{}>({
     name: 'convert',
     description: 'convert json files to mongodb',
     permission: 'owner',
-    disabled: true,
+    hidden: true,
     args: {},
     async execute() {
         return 'command is disabled';

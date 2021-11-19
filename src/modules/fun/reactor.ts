@@ -4,7 +4,7 @@ module.exports = createMessageListener({
 	messageCreate(message) {
 
 	if (global.config.reactionDisabledMembers.includes(message.author.id)) return
-	// if(!canReactIn(message.channel.id)) return
+	if (global.config.counting === message.channel.id) return
 
 	if(message.author.id === message.client.user?.id) return
 

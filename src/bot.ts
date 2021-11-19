@@ -8,8 +8,8 @@
 */
 
 import * as readLine from 'readline'
-import { Intents } from 'discord.js'
-import { BotClient } from './bot-framework'
+import { Client, Intents } from 'discord.js'
+import * as framework from './bot-framework'
 import * as dotenv from 'dotenv'
 import * as database from './database'
 import * as config from './config'
@@ -30,7 +30,7 @@ export function print(x: number, message: string) {
 	print(30, `Loaded database ./db/${process.env.DATABASE}`)
 
 	// Create Discord client
-	global.client = new BotClient({
+	global.client = new Client({
 		intents: [
 			Intents.FLAGS.GUILDS,
 			Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.DIRECT_MESSAGES,
@@ -41,11 +41,15 @@ export function print(x: number, message: string) {
 		partials: ['MESSAGE', 'GUILD_MEMBER', 'CHANNEL'],
 	});
 
-	await global.client.loadCommands()
-	await global.client.loadListeners()
+	// await global.client.loadCommands()
+	// await global.client.loadListeners()
 
 	print(70, `Logging into Discord`)
 	global.client.login(process.env.BOT_TOKEN)
+
+	await framework.load([
+		'dev', 'fun', 'utility'
+	])
 
 	// When the bot starts...
 	global.client.once('ready', async () => {

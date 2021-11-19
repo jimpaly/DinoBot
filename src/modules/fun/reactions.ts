@@ -5,7 +5,7 @@ module.exports = createCommand<{
 	option?: string
 }>({
 	name: 'reactions',
-	description: 'Reactions',
+	description: 'update your reaction preferences',
 	details: oneLine`
 	Sometimes I will react to messages you send! 
 	You can use this command to enable or disable that ;-;
