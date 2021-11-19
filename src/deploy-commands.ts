@@ -1,9 +1,10 @@
 import { REST } from '@discordjs/rest'
 import { RESTPostAPIApplicationCommandsJSONBody, Routes } from 'discord-api-types/v9'
 import { Client, Intents } from 'discord.js'
-import * as framework from './bot-framework'
+import { Modules, Command } from './bot-framework'
 import * as dotenv from 'dotenv'
 import { Module } from './bot-framework'
+import { SlashCommandBuilder } from '@discordjs/builders'
 
 interface Permission {
 	id: string
@@ -29,24 +30,52 @@ interface Permission {
 	await global.client.login(process.env.BOT_TOKEN)
 	if (!global.client.user?.id) throw new Error('bot failed to login!')
 
-	await framework.load([
+	global.modules = new Modules([
 		'dev', 'fun', 'utility'
 	])
+	await global.modules.load()
 
 	// only adding commands to this guild
 	// TODO: enable global commands for ones that are also in dms
 	global.guild = await global.client.guilds.fetch(process.env.GUILD)
 
 	// create slash commands
-	// const commands: RESTPostAPIApplicationCommandsJSONBody[] = []
 	const commands = global.modules
-		.reduce<framework.Command<any>[]>((commands, module) => commands.concat(module.commands), [])
+		.reduce<Command<any>[]>((commands, module) => commands.concat(module.commands), [])
 		.filter(({type}) => type !== 'text')
 		.map(command => command.getSlashCommand())
 	await new REST({ version: '9' }).setToken(process.env.BOT_TOKEN)
 		.put(Routes.applicationGuildCommands(global.client.user.id, process.env.GUILD), { body: commands })
 	console.log(`Successfully registered ${commands.length} slash commands:`)
 	console.log(commands.map(command => command.name).join(', '))
+
+	// test command
+	// const command = new SlashCommandBuilder()
+	// 	.setName('test')
+	// 	.setDescription('test command')
+	// 	.addSubcommand(subcommand => subcommand
+	// 		.setName('subcommand0')
+	// 		.setDescription('top-level subcommand'))
+	// 	.addSubcommandGroup(group => group
+	// 		.setName('group1')
+	// 		.setDescription('subcommand group 1')
+	// 		.addSubcommand(subcommand => subcommand
+	// 			.setName('subcommand1')
+	// 			.setDescription('first subcommand'))
+	// 		.addSubcommand(subcommand => subcommand
+	// 			.setName('subcommand2')
+	// 			.setDescription('second subcommand')))
+	// 	.addSubcommandGroup(group => group
+	// 		.setName('group2')
+	// 		.setDescription('subcommand group 2')
+	// 		.addSubcommand(subcommand => subcommand
+	// 			.setName('subcommand3')
+	// 			.setDescription('third subcommand'))
+	// 		.addSubcommand(subcommand => subcommand
+	// 			.setName('subcommand4')
+	// 			.setDescription('fourth subcommand')))
+	// await new REST({ version: '9' }).setToken(process.env.BOT_TOKEN)
+	// 	.put(Routes.applicationGuildCommands(global.client.user.id, process.env.GUILD), { body: [command.toJSON()] })
 
 	// set permissions for admin and owner only commands
 	const adminPermissions: Permission[] = global.guild.roles.cache

@@ -275,13 +275,13 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 /**
  * tells whether a given text is using this command
  * @param text the text that is trying to run a command
- * @returns this command's name, or null the text doesn't match
+ * @returns true if the command matches the keyword
  */
-export function matchKeyword(command: Command<any> | Subcommand<any>, text: string) {
-	if (!text) return undefined
-	text = text.toLowerCase()
-	if (text.startsWith(command.name.toLowerCase())) return command.name
-	return command.aliases.find(alias => text.startsWith(alias.toLowerCase()))
+export function matchKeyword(command: Command<any> | Subcommand<any>, keyword: string) {
+	if (!keyword) return undefined
+	keyword = keyword.toLowerCase()
+	if (keyword === command.name.toLowerCase()) return true
+	return command.aliases.some(alias => keyword === alias.toLowerCase())
 }
 
 export function createCommand<ArgTypes extends ArgTypesTemplate>({

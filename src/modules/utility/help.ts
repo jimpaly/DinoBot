@@ -1,5 +1,5 @@
 import { stripIndents, oneLine } from 'common-tags'
-import { createCommand, findCommand } from '../../bot-framework'
+import { createCommand } from '../../bot-framework'
 import { makeNavigator } from '../../tools/tools'
 
 module.exports = createCommand<{
@@ -86,7 +86,7 @@ module.exports = createCommand<{
 						title: `${name}`
 					}
 				} else {
-					const command = findCommand(name)
+					const command = global.modules.getCommand(name)
 					if (command) return {
 						title: command.name,
 						description: command.details || command.description,

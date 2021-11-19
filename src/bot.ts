@@ -9,7 +9,7 @@
 
 import * as readLine from 'readline'
 import { Client, Intents } from 'discord.js'
-import * as framework from './bot-framework'
+import { Modules } from './bot-framework'
 import * as dotenv from 'dotenv'
 import * as database from './database'
 import * as config from './config'
@@ -47,9 +47,10 @@ export function print(x: number, message: string) {
 	print(70, `Logging into Discord`)
 	global.client.login(process.env.BOT_TOKEN)
 
-	await framework.load([
+	global.modules = new Modules([
 		'dev', 'fun', 'utility'
 	])
+	await global.modules.load()
 
 	// When the bot starts...
 	global.client.once('ready', async () => {

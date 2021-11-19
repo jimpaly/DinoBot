@@ -1,4 +1,4 @@
-import { Command, load } from "."
+import { Command } from "."
 import { Listener } from "./listener"
 
 interface ModuleCreator {
@@ -11,10 +11,12 @@ interface ModuleCreator {
  * class defining a bot module. modules can contain 
  * commands, chat monitors, buttons, and other discord interaction stuff
  */
-export interface Module {
-	name: string
-	readonly commands: Command<any>[]
-	readonly listeners: Listener[]
+export class Module {
+	constructor(
+		readonly name: string,
+		readonly commands: Command<any>[],
+		readonly listeners: Listener[],
+	) {}
 }
 
 export class ModuleLoader {
@@ -24,11 +26,10 @@ export class ModuleLoader {
 		readonly listeners: string[],
 	) {}
 	async load(directory: string): Promise<Module> {
-		return {
-			name: this.name,
-			commands: await Promise.all(this.commands.map(file => (require(`../modules/${directory}/${file}.js`)))),
-			listeners: await Promise.all(this.listeners.map(file => (require(`../modules/${directory}/${file}.js`)))),
-		}
+		return new Module (this.name,
+			await Promise.all(this.commands.map(file => (require(`../modules/${directory}/${file}.js`)))),
+			await Promise.all(this.listeners.map(file => (require(`../modules/${directory}/${file}.js`)))),
+		)
 	}
 }
 
