@@ -78,7 +78,7 @@ module.exports = createMessageListener({
 		await (await global.database.stats.getStats(message.member.id)).atomicUpdate(stats => {
 			for (const timePeriod of MemberStats.timePeriods) {
 				stats.counts[timePeriod]--
-				stats.points[timePeriod]-= 100
+				stats.points[timePeriod]-= 10
 			}
 			return stats
 		})
