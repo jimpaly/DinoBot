@@ -1,5 +1,8 @@
-import { Awaitable, CategoryChannel, GuildChannel, Message, MessageEmbedOptions } from "discord.js"
+import { stripIndents } from "common-tags"
+import { Awaitable, CategoryChannel, GuildChannel, GuildMember, Message, MessageEmbedOptions, User } from "discord.js"
 import { ChannelTypes, MessageComponentTypes } from "discord.js/typings/enums"
+import { MemberStats } from "../database"
+import * as Time from './time'
 
 type ChannelType = keyof typeof ChannelTypes
 
@@ -38,6 +41,7 @@ interface NavigationItem {
 	placeholder?: string,
 	subItems?: NavigationItem[]
 }
+/** creates a message where users can navigate through pages by clicking through discord select menus */
 export async function makeNavigator(message: Message, items: NavigationItem[], 
 builder: (item: string, level: number) => Awaitable<MessageEmbedOptions>) {
 
@@ -82,3 +86,10 @@ builder: (item: string, level: number) => Awaitable<MessageEmbedOptions>) {
 		message.edit({ components: message.components })
 	})
 }
+
+/** check if a string is in an array */
+export function isType<T extends string>(str: string, arr: readonly T[]): str is T {
+	return (arr as readonly string[]).includes(str)
+}
+
+export { replaceTags } from './replace'

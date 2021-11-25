@@ -2,6 +2,7 @@ import { SlashCommandBuilder, SlashCommandChannelOption, SlashCommandNumberOptio
 import { oneLine } from "common-tags"
 import { APIMessage, ApplicationCommandOptionType, ApplicationCommandType, RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v9"
 import { Awaitable, CommandInteraction, DMChannel, Guild, GuildChannel, GuildMember, InteractionReplyOptions, Message, MessageEditOptions, NewsChannel, PartialDMChannel, Permissions, ReplyMessageOptions, TextBasedChannels, TextChannel, ThreadChannel, User } from "discord.js"
+import { replaceTags } from "../tools"
 
 type ArgTypeStr = 'string' | 'number' | 'user' | 'member' | 'channel'
 type ArgType = string | number | User | GuildMember | GuildChannel
@@ -9,6 +10,9 @@ type ArgTypeFromStr<Type extends ArgTypeStr> = Type extends 'string' ? string : 
 	Type extends 'user' ? User : Type extends 'member' ? GuildMember : Type extends 'channel' ? GuildChannel : ArgType
 type ArgTypeToStr<Type extends ArgType> = Type extends string ? 'string' : Type extends number ? 'number' :
 	Type extends User ? 'user' : Type extends GuildMember ? 'member' : Type extends GuildChannel ? 'channel' : ArgTypeStr
+
+type ArgChoiceIndex<Type extends ArgType> = Type extends number | string ? Type : string
+type ArgChoice<Type extends ArgType> = Type extends number ? number : string
 
 export type ArgTypesTemplate = {[key: string]: ArgType}
 
@@ -21,7 +25,7 @@ export interface Arg<Type extends ArgType> {
 	description: string
 	type: ArgTypeToStr<Exclude<Type, undefined>>
 	optional: undefined extends Type ? true : false
-	choices?: {[key: string]: Type[]}
+	choices?: {[key in ArgChoiceIndex<Exclude<Type, undefined>>]: ArgChoice<Type>[]}
 }
 
 interface CommandExecuteData {
@@ -33,7 +37,10 @@ interface CommandExecuteData {
 
 type ExecuteFunction<ArgTypes extends ArgTypesTemplate> = (
 	args: ArgTypes, 
-	reply: (options: string | ReplyMessageOptions | InteractionReplyOptions) => Promise<Message>, 
+	reply: (options: string | ReplyMessageOptions | InteractionReplyOptions, data?: {
+		member?: GuildMember
+		user?: User
+	}) => Promise<Message>, 
 	data: CommandExecuteData
 ) => Awaitable<string | ReplyMessageOptions | void>
 export interface CommandBlueprint<ArgTypes extends ArgTypesTemplate> {
@@ -41,7 +48,7 @@ export interface CommandBlueprint<ArgTypes extends ArgTypesTemplate> {
 	description: string
 	hidden?: boolean
 	aliases?: string[]
-	args: {[key in keyof ArgTypes]-?: Arg<ArgTypes[key]>}
+	args: {[key in keyof Required<ArgTypes>]-?: Arg<ArgTypes[key]>}
 	execute: ExecuteFunction<ArgTypes>
 }
 interface CommandCreator<ArgTypes extends ArgTypesTemplate> extends CommandBlueprint<ArgTypes> {
@@ -121,7 +128,7 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 				required: !command.args[name].optional,
 				choices: Object.entries(command.args[name].choices ?? {}).map(([name, values]) => {return {
 					name: name,
-					value: values[0] as string | number,
+					value: (values as string[] | number[])[0],
 				}}),
 			}})
 		}
@@ -217,9 +224,13 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 		}
 
 		let lastMsg: Message | undefined
-		const reply = await command.execute(parsedArgs as ArgTypes, async option => {
-			if (!lastMsg) lastMsg = await message.reply(option)
-			else lastMsg = await lastMsg.reply(option)
+		const reply = await command.execute(parsedArgs as ArgTypes, async (options, data) => {
+			options = await replaceTags(options, {
+				member: data?.member ?? message.member ?? undefined,
+				user: data?.user ?? message.author
+			})
+			if (!lastMsg) lastMsg = await message.reply(options)
+			else lastMsg = await lastMsg.reply(options)
 			return lastMsg
 		}, {
 			user: message.author,
@@ -227,7 +238,10 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 			permissions: message.member?.permissions,
 			channel: message.channel
 		})
-		if (reply) message.reply(reply)
+		if (reply) message.reply(await replaceTags(reply, {
+			member: message.member ?? undefined,
+			user: message.author,
+		}))
 	}
 
 	/**
@@ -253,8 +267,12 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 				else if (channel) interaction.reply(`I couldn't find the channel for the argument \`<${name}>\`! Try entering again`)
 			}
 		}
-		const reply = await command.execute(parsedArgs as ArgTypes, async options => {
+		let reply = await command.execute(parsedArgs as ArgTypes, async (options, data) => {
 			let message: Message | APIMessage | undefined
+			options = await replaceTags(options, {
+				member: data?.member ?? (interaction.member instanceof GuildMember) ? interaction.member as GuildMember : undefined,
+				user: data?.user ?? interaction.user
+			})
 			if (!interaction.replied) {
 				await interaction.reply(options)
 				message = await interaction.fetchReply()
@@ -267,7 +285,11 @@ export class Command<ArgTypes extends ArgTypesTemplate> {
 			permissions: (interaction.member instanceof GuildMember) ? interaction.member.permissions : undefined,
 			channel: interaction.channel ?? await global.guild.channels.fetch(interaction.channelId) as TextChannel ?? undefined
 		})
-		if (reply) interaction.replied ? interaction.followUp(reply) : interaction.reply(reply);
+		if (reply) reply = await replaceTags(reply, {
+			member: (interaction.member instanceof GuildMember) ? interaction.member : undefined,
+			user: interaction.user
+		})
+		if (reply) interaction.replied ? interaction.followUp(reply) : interaction.reply(reply)
 	}
 
 }
@@ -286,7 +308,7 @@ export function matchKeyword(command: Command<any> | Subcommand<any>, keyword: s
 
 export function createCommand<ArgTypes extends ArgTypesTemplate>({
 	name, description, details = '', aliases = [],
-	hidden = false, permission = 'public', guildOnly = false,type = 'text',
+	hidden = false, permission = 'public', guildOnly = false, type = 'text',
 	args, execute,
 }: CommandCreator<ArgTypes>): Command<ArgTypes> { return new Command(
 	name, description, details, aliases,

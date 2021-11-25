@@ -2,7 +2,7 @@ import { Guild, Client } from "discord.js"
 import { Modules } from './bot-framework'
 import { Database } from './database'
 import { RxLocalDocument } from 'rxdb'
-import { Config } from "./config"
+import { Config } from "./database/config"
 
 declare global {
 	// var config: RxLocalDocument<Database, ConfigDoc>

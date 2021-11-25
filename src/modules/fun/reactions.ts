@@ -2,7 +2,7 @@ import { oneLine } from 'common-tags'
 import { createCommand } from '../../bot-framework'
 
 module.exports = createCommand<{
-	option?: string
+	option?: 'enable' | 'disable'
 }>({
 	name: 'reactions',
 	description: 'update your reaction preferences',
@@ -21,7 +21,7 @@ module.exports = createCommand<{
 				enable: ['enable', 'on', 'yes', 'true'],
 				disable: ['disable', 'off', 'no', 'false'],
 			}
-		}
+		},
 	},
 	execute({option}, _, {user}) {
 		const i = global.config.reactionDisabledMembers.indexOf(user.id)

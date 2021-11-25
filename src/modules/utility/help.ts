@@ -1,6 +1,6 @@
 import { stripIndents, oneLine } from 'common-tags'
 import { createCommand } from '../../bot-framework'
-import { makeNavigator } from '../../tools/tools'
+import { makeNavigator } from '../../tools'
 
 module.exports = createCommand<{
 	command?: string

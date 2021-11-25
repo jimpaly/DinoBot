@@ -1,7 +1,7 @@
 import { oneLine } from "common-tags"
 import { CategoryChannel, GuildChannel } from "discord.js"
 import { createCommand } from "../../bot-framework"
-import { listChannels } from "../../tools/tools"
+import { listChannels } from "../../tools"
 
 function isDisabled(id: string) { return global.config.disabledChannels.includes(id) }
 function disable(...ids: string[]) {

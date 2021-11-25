@@ -31,7 +31,7 @@ interface Permission {
 	if (!global.client.user?.id) throw new Error('bot failed to login!')
 
 	global.modules = new Modules([
-		'dev', 'fun', 'utility'
+		'dev', 'fun', 'stats', 'utility'
 	])
 	await global.modules.load()
 
